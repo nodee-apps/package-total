@@ -1,11 +1,10 @@
 #!/bin/sh
 
 name="enterprise-total"
-path="packages/total.package"
 
 thisdir="`dirname \"$0\"`"
 cd "$thisdir" &&
-cd "$path" &&
+cd packages/"$name".package &&
 tpm create "$name".package &&
 mv "$name".package ../../"$name".package &&
 exit 0 ||

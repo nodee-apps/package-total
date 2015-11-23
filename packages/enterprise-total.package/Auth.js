@@ -284,9 +284,10 @@ module.exports.install = function(){
         var self = this;
         var path = self.url, area = '';
         
-        for(var i=0;i<Auth.areas.length;i++){
+        // only redirect when this is not ajax request
+        if(!self.xhr()) for(var i=0;i<Auth.areas.length;i++){
             if(path.indexOf(Auth.areas[i]) === 0) {
-                area = Auth.areas[i];
+                area = Auth.areas[i]; 
                 self.redirect(area + 'login?redirect=' + encodeURIComponent(self.url));
                 return;
             }
