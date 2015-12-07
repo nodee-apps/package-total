@@ -29,7 +29,10 @@ function Auth(opts){
     auth.registerTemplate = opts.registerTemplate || 'register';
     auth.userModel = opts.userModel || 'User';
     auth.minLength = opts.minLength || 5;
+    auth.mailer = opts.mailer;
     auth.registerSuccess = opts.registerSuccess;
+    auth.forgotPassSubject = opts.forgotPassSubject;
+    auth.forgotPassEmail = opts.forgotPassEmail;
     auth.forgotPassTemplate = opts.forgotPassTemplate;
     
     Model(auth.userModel).init();
@@ -135,32 +138,58 @@ function Auth(opts){
         }
     };
 
+    function getMailer(){
+        var authMailer = (typeof auth.mailer === 'function' ? auth.mailer() : auth.mailer) || {};
+        var mailerCfgId = (framework.config[ 'auth-mailer-use' ] || (framework.config[ 'auth-mailer-host' ] ? 'auth-mailer' : '') || 'mailer-primary') + '-';
+        return {
+            from: authMailer.from || framework.config[ 'auth-mailer-from' ] || framework.config[ mailerCfgId+'from' ],
+            name: authMailer.name || framework.config[ 'auth-mailer-name' ] || framework.config[ 'auth-mailer-as' ] || framework.config[ mailerCfgId+'name' ] || framework.config[ mailerCfgId+'as' ],
+            host: authMailer.host || framework.config[ mailerCfgId+'host' ],
+            port: authMailer.port || framework.config[ mailerCfgId+'port' ],
+            secure: authMailer.secure || framework.config[ mailerCfgId+'secure' ] || false,
+            tls: authMailer.tls || framework.config[ mailerCfgId+'tls' ],
+            user: authMailer.user || framework.config[ mailerCfgId+'user' ],
+            password: authMailer.password || framework.config[ mailerCfgId+'password' ],
+            timeout: authMailer.timeout || framework.config[ mailerCfgId+'timeout' ],
+
+            body: auth.forgotPassEmail,
+            template: auth.forgotPassTemplate || framework.config[ 'auth-mailer-template' ] || framework.config[ mailerCfgId+'template' ],
+            subject: auth.forgotPassSubject || framework.config[ 'auth-mailer-subject' ] || framework.config[ mailerCfgId+'subject' ]
+        };
+    }
+    
     auth.forgotpass = function(){
         var self = this,
-            email = (self.body || {}).email;
+            email = (self.body || {}).email,
+            authMailer = getMailer();
         
         if(email){
             Model(auth.userModel).collection().find({ email: email }).one(function(err, user){
                 if(err) self.view500(err);
                 else if(user){
+                    if(!authMailer.host || !authMailer.port || (!authMailer.body && !authMailer.template)){
+                        self.status = 500;
+                        return self.json({ data:'Mailer Not Configured'});
+                    }
+                    
                     // user.forgotPassToken = guid();
                     var new_password = generateId();
                     user.hashPass(new_password);
                     user.update(function(err, newUser){
-                        if(err) self.view500(err);
-                        else {
-                            if(auth.mailerCfg.host && auth.mailerCfg.template){
-                                self.sendMail({
-                                    config: auth.mailerCfg,
-                                    
-                                    subject: auth.mailerCfg.subject,
-                                    template: auth.mailerCfg.template,
-                                    model:{ $brackets: { new_password: new_password } }, //{ token: user.forgotPassToken },
-                                    to: user.email
-                                });
-                            }
-                            self.json({ data:'password sent'});
-                        }
+                        if(err) return self.view500(err);
+                        
+                        self.sendMail({
+                            config: authMailer,
+                            subject: authMailer.subject,
+                            body: authMailer.body,
+                            template: authMailer.template,
+                            model:{ $brackets: { new_password: new_password } }, //{ token: user.forgotPassToken },
+                            to: user.email
+                        }, function(err){
+                            if(err) console.warn('Sending Forgot Pass. email to "' +user.email+ '" failed', err);
+                        });
+
+                        self.json({ data:'Password Sent'});
                     });
                 }
                 else {
@@ -195,24 +224,6 @@ function Auth(opts){
                         });
         // { Expires: Date, Domain: String, Path: String, Secure: Boolean, httpOnly: Boolean }
     };
-    
-    var mailerCfgId = (framework.config[ 'auth-mailer-use' ] || (framework.config[ 'auth-mailer-host' ] ? 'auth-mailer' : '') || 'mailer-primary') + '-';
-    auth.mailerCfg = {
-        from: framework.config[ 'auth-mailer-from' ] || framework.config[ mailerCfgId+'from' ],
-        name: framework.config[ 'auth-mailer-name' ] || framework.config[ 'auth-mailer-as' ] || framework.config[ mailerCfgId+'name' ] || framework.config[ mailerCfgId+'as' ],
-        host: framework.config[ mailerCfgId+'host' ],
-        port: framework.config[ mailerCfgId+'port' ],
-        secure: framework.config[ mailerCfgId+'secure' ] || false,
-        tls: framework.config[ mailerCfgId+'tls' ],
-        user: framework.config[ mailerCfgId+'user' ],
-        password: framework.config[ mailerCfgId+'password' ],
-        timeout: framework.config[ mailerCfgId+'timeout' ],
-        
-        template: framework.config[ 'auth-mailer-template' ] || framework.config[ mailerCfgId+'template' ] || auth.forgotPassTemplate,
-        subject: framework.config[ 'auth-mailer-subject' ] || framework.config[ mailerCfgId+'subject' ]
-    };
-    
-    auth.mailerCfg = object.extend(true, auth.mailerCfg, opts.mailer || {});
     
     auth.onAuthorization = function(req, res, flags, next) {
         var sessCookie = req.cookie(framework.config['session-cookie-name']);

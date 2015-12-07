@@ -101,7 +101,6 @@ var definition = function() {
         opts.to = to || opts.to || opts.address;
         opts.subject = subject || opts.subject;
         opts.template = view || opts.view || opts.template || '';
-        if(opts.template && opts.template.indexOf('e:')!==0 && opts.template.indexOf('enterprise:')!==0) opts.template = 'e:'+opts.template;
         opts.model = model || opts.model || opts.viewModel || {};
         opts.attachments = opts.attachment ? [opts.attachment] : (opts.attachments || []);
         
@@ -124,32 +123,45 @@ var definition = function() {
          */
         var mailerCfgId = (opts.mailer || opts.mailer_prefix || 'mailer-primary')+'-',
             mailerCfg = opts.config || {
-                from: framework.config[ mailerCfgId+'from' ] || opts.from,
-                name: framework.config[ mailerCfgId+'name' ] || framework.config[ mailerCfgId+'as' ] || opts.name || opts.as,
-                host: framework.config[ mailerCfgId+'host' ] || opts.host,
-                port: framework.config[ mailerCfgId+'port' ] || opts.port,
-                secure: framework.config[ mailerCfgId+'secure' ] || opts.secure || false,
-                tls: framework.config[ mailerCfgId+'tls' ] || opts.tls,
-                user: framework.config[ mailerCfgId+'user' ] || opts.user,
-                password: framework.config[ mailerCfgId+'password' ] || opts.password,
-                timeout: framework.config[ mailerCfgId+'timeout' ] || opts.timeout
+                from: opts.from || framework.config[ mailerCfgId+'from' ],
+                name: opts.name || opts.as || framework.config[ mailerCfgId+'name' ] || framework.config[ mailerCfgId+'as' ],
+                host: opts.host || framework.config[ mailerCfgId+'host' ],
+                port: opts.port || framework.config[ mailerCfgId+'port' ],
+                secure: opts.secure || framework.config[ mailerCfgId+'secure' ] || false,
+                tls: opts.tls || framework.config[ mailerCfgId+'tls' ],
+                user: opts.user || framework.config[ mailerCfgId+'user' ],
+                password: opts.password || framework.config[ mailerCfgId+'password' ],
+                timeout: opts.timeout || framework.config[ mailerCfgId+'timeout' ]
             };
+        
         if(!mailerCfg.host) {
             if(cb) cb(new Error('Missing mailer host'));
             else throw new Error('Missing mailer host');
         }
         
         var emailBody = opts.emailBody || opts.body || '';
-        if(!emailBody && opts.template) {
-            emailBody = this.view(opts.template, opts.model, true);
+        if(typeof emailBody === 'function') emailBody = emailBody();
+        var emailTemplate = typeof opts.template === 'function' ? opts.template() : opts.template;
+        if(emailTemplate && emailTemplate.indexOf('e:')!==0 && emailTemplate.indexOf('enterprise:')!==0) emailTemplate = 'e:'+emailTemplate;
+        
+        if(emailBody){
+            var model = (opts.config || {}).model || opts.model;
+            if(model.$brackets || model.$bracketsData || model.$bracketsModel){
+                emailBody = eUtils.template.render(emailBody, model.$brackets || model.$bracketsData || model.$bracketsModel);
+            }
+        }
+        else if(emailTemplate) {
+            emailBody = this.view(emailTemplate, opts.model, true);
             if(emailBody instanceof Error) {
                 if(cb) cb(new Error('sendEmail: rendering view template failed').cause(emailBody));
                 else throw new Error('sendEmail: rendering view template failed').cause(emailBody);
             }
         }
         
+        var emailSubject = typeof opts.subject === 'function' ? opts.subject() : opts.subject;
+        
         try {
-            var message = Mail.create(opts.subject, emailBody);
+            var message = Mail.create(emailSubject, emailBody);
             
             // from
             message.from(mailerCfg.from, mailerCfg.name);
