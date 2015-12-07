@@ -5,6 +5,15 @@ var Model = require('enterprise-model'),
     guid = require('enterprise-utils').guid,
     datasource = framework.config['auth-datasource'] || 'MongoDataSource';
 
+var UserProfile = Model.define('UserProfile', {
+    language:{ isString:true }, // preffered language
+    nickname:{ isString:true },
+    firstname:{ isString:true },
+    lastname:{ isString:true },
+    phone:{ isString:true },
+    notes:{ isString: true },
+});
+
 var User = Model.define( 'User', [ datasource ], {
     email:{ isEmail:true },
     roles:{ isArray:true },
@@ -12,11 +21,12 @@ var User = Model.define( 'User', [ datasource ], {
     lastLoginDT:{ toDate:true },
     //auth_google: { required:false, inlineUpdate:true, model:Auth_google, updateIfUndefined:false }, // TODO: implement updateIfUndefined:false
     disabled:{ isBoolean:true },
-    profile:{}, // some profile data, such as name, phone, ...
     forgotPassToken:{ isString:true },
     apiKey:{ isString: true }, // user can have direct access to resources via url
     allowedIP:{ isArray: true }, // allowed IP to access api, if empty, allowed are all IPs
-    notes:{ isString: true }
+    
+    // user profile, some profile data, such as address, phone, etc ...
+    profile:{ model: UserProfile },
 });
 
 var connection = {
@@ -45,6 +55,9 @@ User.extendDefaults({
     connection: connection,
     cache:{
         duration: 3*60*1000 // default 3 minutes
+    },
+    options:{
+        sort:{ createdDT:1 }
     }
 });
 
@@ -81,6 +94,12 @@ User.on('beforeUpdate', function(next){
     var user = this;
     
     if(user.roles) user.roles = replaceRoleWhiteSpaces(user.roles);
+    user.clearCache(user);
+    next();
+});
+
+User.on('beforeRemove', function(next){
+    var user = this;
     user.clearCache(user);
     next();
 });

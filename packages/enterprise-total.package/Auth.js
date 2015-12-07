@@ -57,19 +57,23 @@ function Auth(opts){
             if(err) framework.rest.errResponse(err, function(err, status, data){
                 if(err) self.view500(err);
                 else {
-                    // console.warn(status, data);
                     self.status = status;
                     auth.viewRegister.call(self, data);
                     // self.view(auth.registerTemplate, data);
                 }
             });
             else if(auth.registerSuccess) auth.registerSuccess.call(self, user);
+            else if(self.xhr) self.json({ data:user });
             else auth.login.call(self, user);
         });
     };
 
     auth.viewLogin = function(loginFailed){
-        this.view(auth.loginTemplate, { loginFailed: loginFailed });
+        if(this.xhr){
+            if(loginFailed) this.status = 400;
+            this.json({ data:{ loginFailed: loginFailed } });
+        }
+        else this.view(auth.loginTemplate, { loginFailed: loginFailed });
     };
 
     auth.login = function(newUser) {
@@ -78,7 +82,8 @@ function Auth(opts){
         if(newUser){ // newly registered user, just login and redirect to home page
             // save to cookie
             auth.setSessionCookie.call(self, newUser);
-            self.redirect(self.query.redirect || auth.basePath || '/');
+            if(self.xhr) self.json({ data: newUser });
+            else self.redirect(self.query.redirect || auth.basePath || '/');
         }
         else if(self.body && self.body.email) {
             Model(auth.userModel).validateLogin(self.body, function(err, user){
@@ -89,12 +94,12 @@ function Auth(opts){
                         if(err) self.view500(err);
                         else {
                             auth.setSessionCookie.call(self, user);
-                            self.redirect(self.query.redirect || auth.basePath || '/');
+                            if(self.xhr) self.json({ data: user });
+                            else self.redirect(self.query.redirect || auth.basePath || '/');
                         }
                     });
                 }
                 else auth.viewLogin.call(self, true);
-                //self.view(auth.loginTemplate, { loginFailed:true });
             });
         }
         else auth.viewLogin.call(self);
@@ -249,7 +254,7 @@ function Auth(opts){
                 next(true, user); // user is logged
             }
         });
-    }
+    };
 }
 
 // helper for generating routes
@@ -258,7 +263,9 @@ Auth.prototype.generateRoutes = function(){
     
     framework.route(auth.basePath + 'login', auth.viewLogin, ['get']);
     framework.route(auth.basePath + 'login', auth.login, ['post']);
+    framework.route(auth.basePath + 'login', auth.login, ['post','json']);
     framework.route(auth.basePath + 'register', auth.viewRegister, ['get']);
+    framework.route(auth.basePath + 'register', auth.register, ['post', 'json']);
     framework.route(auth.basePath + 'register', auth.register, ['post', '#body2object']);
     framework.route(auth.basePath + 'logout', auth.logout, ['authorize']);
     framework.route(auth.basePath + 'changepass', auth.changepass, ['post','json','authorize']);
@@ -300,7 +307,6 @@ module.exports.install = function(){
     
     // register auth filter
     framework.on('controller', function(ctrl, name) {
-        //console.warn('ON CONTROLLER', ctrl.subscribe.route.name, name, ctrl.flags, ctrl.uri.pathname);
         var routeName = ctrl.subscribe.route.name + '/';
         var urlPath = ctrl.uri.pathname + '/';
         
