@@ -174,6 +174,37 @@ module.exports.install = function(){
     };
 };
 
+/**
+ * extract query helper
+ * @param   {object}   query
+ * @param   {object}   reservedKeys
+ * @returns {object}
+ */
+function extractFind(query, reservedKeys){
+    var find = {};
+    for(var key in query){
+        if(!reservedKeys[ key ]) {
+            find[key] = object.dateStringsToDates( query[key] );
+        }
+    }
+    return find;
+}
+
+/**
+ * extract query helper
+ * @param   {string} value
+ * @returns {object}
+ */
+function tryParse(value){
+    if(!value || typeof value !== 'string') return value;
+    
+    try {
+        return JSON.parse(value);
+    }
+    catch(err){
+        return {};
+    }
+}
 
 /**
  * extracts query from querystring, using format like:
@@ -199,26 +230,16 @@ function extractQuery(parsedQString, opts) {
         $params:true // reserved for custom Model.collection() methods, e.g. aggregation
     };
     
-    function extractFind(query){
-        var find = {};
-        for(var key in query){
-            if(!reservedKeys[ key ]) {
-                find[key] = object.dateStringsToDates( query[key] );
-            }
-        }
-        return find;
-    }
-    
     // ?$q={ $limit:1, age:{ $gt:30 }, name:'jozef' }
     if(parsedQString.$q) {
         try {
             var q = JSON.parse(parsedQString.$q);
-            query.$find = extractFind(q);
-            query.$sort = q.$sort || parsedQString.$sort;
+            query.$find = extractFind(q, reservedKeys);
+            query.$sort = q.$sort || tryParse(parsedQString.$sort);
             query.$skip = q.$skip || parsedQString.$skip;
             query.$limit = q.$limit || parsedQString.$limit;
             query.$page = q.$page || parsedQString.$page;
-            query.$fields = q.$fields || parsedQString.$fields;
+            query.$fields = q.$fields || tryParse(parsedQString.$fields);
             query.$params = q.$params;
         }
         catch(err){
@@ -229,12 +250,12 @@ function extractQuery(parsedQString, opts) {
     // ? $limit=1 & name=jozef & ...
     else {
         query = {
-            $find: extractFind(parsedQString),
-            $sort: parsedQString.$sort,
+            $find: extractFind(parsedQString, reservedKeys),
+            $sort: tryParse(parsedQString.$sort),
             $skip: parsedQString.$skip,
             $limit: parsedQString.$limit,
             $page: parsedQString.$page,
-            $fields: parsedQString.$fields,
+            $fields: tryParse(parsedQString.$fields),
             $params: parsedQString.$params
         };
     }
