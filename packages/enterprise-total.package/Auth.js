@@ -225,7 +225,7 @@ function Auth(opts){
         // { Expires: Date, Domain: String, Path: String, Secure: Boolean, httpOnly: Boolean }
     };
     
-    auth.onAuthorization = function(req, res, flags, next) {
+    auth.onAuthorize = function(req, res, flags, next) {
         var sessCookie = req.cookie(framework.config['session-cookie-name']);
         var user = framework.decrypt(sessCookie, 'user');
         
@@ -235,14 +235,12 @@ function Auth(opts){
         
         if(!(user && (user.id || user.apiKey))) {
             // unlogged user
-            next(false);
-            return;
+            return next(false);
         }
         
         if(user.id && user.ip !== req.ip) {
             // user ip do not match cookies ip - maybe stolen cookies
-            next(false);
-            return;
+            return next(false);
         }
         
         var q = Model(auth.userModel).collection().cache();
@@ -288,7 +286,7 @@ Auth.prototype.generateRoutes = function(){
     framework.route(auth.basePath + '*', auth.view404, ['post','json','authorize']);
     
     // register auth request handler
-    framework.onAuthorization = auth.onAuthorization;
+    framework.onAuthorize = auth.onAuthorize;
 };
 
 
