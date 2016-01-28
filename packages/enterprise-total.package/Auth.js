@@ -215,13 +215,11 @@ function Auth(opts){
     
     auth.setSessionCookie = function(user){
         var self = this;
-        self.res.cookie(self.config['session-cookie-name'],
-                        framework.encrypt({ id: user.id, ip: self.req.ip }, 'user'),
-                        {
-                            expires: new Date().add('h', self.config['session-cookie-expires'] || 24),
-                            secure: self.config['session-cookie-secure'] === false ? false : true,
-                            httpOnly: self.config['session-cookie-httpOnly'] === false ? false : true
-                        });
+        self.res.cookie(self.config['session-cookie-name'], framework.encrypt({ id: user.id, ip: self.req.ip }, 'user'),{
+            expires: new Date().add('h', self.config['session-cookie-expires'] || 24),
+            secure: self.config['session-cookie-secure'] === false ? false : true,
+            httpOnly: self.config['session-cookie-httpOnly'] === false ? false : true
+        });
         // { Expires: Date, Domain: String, Path: String, Secure: Boolean, httpOnly: Boolean }
     };
     

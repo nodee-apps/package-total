@@ -74,10 +74,12 @@ User.addMethod('validateLogin', function(login, callback){ //callback(err, user 
 User.on('beforeCreate', function(next){
     var user = this;
     
+    // check email
+    if(!user.email) return next(new Error('User Model: validation failed').details({ code:'INVALID', validErrs:{ email:['required'] } }));
+    
     // hash password
     if(!user.password) {
-        next(new Error('User Model: validation failed').details({ code:'INVALID', validErrs:{ password:['required'] } }));
-        return;
+        return next(new Error('User Model: validation failed').details({ code:'INVALID', validErrs:{ password:['required'] } }));
     }
     user.hashPass();
     
@@ -87,7 +89,15 @@ User.on('beforeCreate', function(next){
     // generate apiKey
     user.apiKey = guid();
     
-    next();
+    // check user email duplicity (only if using JsonFileDataSource)
+    if(datasource !== 'MongoDataSource'){
+        user.constructor.colelction().find({ email:user.email }).exists(function(err, exists){
+            if(err) return next(err);
+            if(exists) return next(new Error('User Model: validation failed').details({ code:'INVALID', validErrs:{ email:['unique'] } }));
+            next();
+        });
+    }
+    else next();
 });
 
 User.on('beforeUpdate', function(next){
