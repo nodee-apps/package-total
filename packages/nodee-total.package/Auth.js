@@ -1,7 +1,7 @@
 
-var Model = require('enterprise-model'),
-    object = require('enterprise-utils').object,
-    generateId = require('enterprise-utils').shortId.generate;
+var Model = require('nodee-model'),
+    object = require('nodee-utils').object,
+    generateId = require('nodee-utils').shortId.generate;
 
 // var auth = new Auth({ basePath:'/admin' });
 // auth.generateRoutes();

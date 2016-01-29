@@ -1,6 +1,6 @@
 #!/bin/sh
 
-name="enterprise-total"
+name="nodee-total"
 
 thisdir="`dirname \"$0\"`"
 cd "$thisdir" &&

@@ -1,6 +1,6 @@
 'use strict';
 
-var Model = require('enterprise-model');
+var Model = require('nodee-model');
 
 var ApiClient = Model.define('ApiClient', ['RestDataSource'], {});
 

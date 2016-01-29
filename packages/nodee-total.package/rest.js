@@ -1,7 +1,7 @@
 'use_strict';
 
-var Model = require('enterprise-model'),
-    object = require('enterprise-utils').object;
+var Model = require('nodee-model'),
+    object = require('nodee-utils').object;
 
 /*
  * helper for generating rest endpoint actions

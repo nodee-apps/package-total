@@ -1,12 +1,12 @@
 'use strict';
 
 var fs = require('fs'),
-    model = require('enterprise-model'),
+    model = require('nodee-model'),
     framework = GLOBAL.framework,
     Mail = GLOBAL.Mail;
 
-GLOBAL.eViewEngine = require('enterprise-view');
-GLOBAL.eUtils = require('enterprise-utils');
+GLOBAL.eViewEngine = require('nodee-view');
+GLOBAL.eUtils = require('nodee-utils');
 
 var rest = require('./rest.js'),
     User = require('./User.js'),
@@ -15,8 +15,8 @@ var rest = require('./rest.js'),
 
 
 // important
-module.exports.id = 'enterprise-total';
-module.exports.name = 'enterprise-total';
+module.exports.id = 'nodee-total';
+module.exports.name = 'nodee-total';
 module.exports.version = '0.6.0';
 module.exports.rest = rest;
 module.exports.Auth = Auth;
@@ -48,7 +48,7 @@ module.exports.install = function(){
         };
     }
     catch(err){
-        console.warn('enterprise-total: Node module "uglify-js" not found, client scripts will not be minified');
+        console.warn('nodee-total: Node module "uglify-js" not found, client scripts will not be minified');
     }
     
     // include rest generators
@@ -142,7 +142,7 @@ var definition = function() {
         var emailBody = opts.emailBody || opts.body || '';
         if(typeof emailBody === 'function') emailBody = emailBody();
         var emailTemplate = typeof opts.template === 'function' ? opts.template() : opts.template;
-        if(emailTemplate && emailTemplate.indexOf('e:')!==0 && emailTemplate.indexOf('enterprise:')!==0) emailTemplate = 'e:'+emailTemplate;
+        if(emailTemplate && emailTemplate.indexOf('e:')!==0 && emailTemplate.indexOf('nodee:')!==0) emailTemplate = 'e:'+emailTemplate;
         
         if(emailBody){
             var model = (opts.config || {}).model || opts.model;
@@ -205,17 +205,17 @@ var definition = function() {
     var origFwView = Framework.prototype.view;
     
     Controller.prototype.view = function(){
-        if((arguments[0]||'').substring(0,2)!=='e:' && (arguments[0]||'').substring(0,11)!=='enterprise:') origCtrlView.apply(this, arguments);
+        if((arguments[0]||'').substring(0,2)!=='ne:' && (arguments[0]||'').substring(0,11)!=='nodee:') origCtrlView.apply(this, arguments);
         else {
-            arguments[0] = arguments[0].replace(/^e:[\s]*/g,'').replace(/^enterprise:[\s]*/g,'');
+            arguments[0] = arguments[0].replace(/^ne:[\s]*/g,'').replace(/^nodee:[\s]*/g,'');
             return view.apply(this, arguments);
         }
     };
     
     Framework.prototype.view = function(){
-        if((arguments[0]||'').substring(0,2)!=='e:' && (arguments[0]||'').substring(0,11)!=='enterprise:') origFwView.apply(this, arguments);
+        if((arguments[0]||'').substring(0,2)!=='ne:' && (arguments[0]||'').substring(0,11)!=='nodee:') origFwView.apply(this, arguments);
         else {
-            arguments[0] = arguments[0].replace(/^e:[\s]*/g,'').replace(/^enterprise:[\s]*/g,'');
+            arguments[0] = arguments[0].replace(/^ne:[\s]*/g,'').replace(/^nodee:[\s]*/g,'');
             return view.apply(this, arguments);
         }
     };

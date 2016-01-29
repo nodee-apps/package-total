@@ -1,8 +1,8 @@
 'use strict';
 
-var Model = require('enterprise-model'),
-    pass = require('enterprise-utils').password,
-    guid = require('enterprise-utils').guid,
+var Model = require('nodee-model'),
+    pass = require('nodee-utils').password,
+    guid = require('nodee-utils').guid,
     datasource = framework.config['auth-datasource'] || 'MongoDataSource';
 
 var UserProfile = Model.define('UserProfile', {
