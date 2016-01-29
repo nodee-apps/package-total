@@ -110,7 +110,7 @@ var definition = function() {
         //    subject: 'asdad',
         //    mailer: 'mailer-primary' 
         //    to: 'vas@email.sk',
-        //    template: 'e: emails/order_trip_updated',
+        //    template: 'ne: emails/order_trip_updated',
         //    emailData: ... alias data
         //    viewModel: ... alias model
         //    subject: 'Objednávka Upravená - Služobná cesta',
@@ -142,7 +142,7 @@ var definition = function() {
         var emailBody = opts.emailBody || opts.body || '';
         if(typeof emailBody === 'function') emailBody = emailBody();
         var emailTemplate = typeof opts.template === 'function' ? opts.template() : opts.template;
-        if(emailTemplate && emailTemplate.indexOf('e:')!==0 && emailTemplate.indexOf('nodee:')!==0) emailTemplate = 'e:'+emailTemplate;
+        if(emailTemplate && emailTemplate.indexOf('ne:')!==0 && emailTemplate.indexOf('nodee:')!==0) emailTemplate = 'ne:'+emailTemplate;
         
         if(emailBody){
             var model = (opts.config || {}).model || opts.model;
@@ -205,7 +205,7 @@ var definition = function() {
     var origFwView = Framework.prototype.view;
     
     Controller.prototype.view = function(){
-        if((arguments[0]||'').substring(0,2)!=='ne:' && (arguments[0]||'').substring(0,11)!=='nodee:') origCtrlView.apply(this, arguments);
+        if((arguments[0]||'').substring(0,3)!=='ne:' && (arguments[0]||'').substring(0,6)!=='nodee:') origCtrlView.apply(this, arguments);
         else {
             arguments[0] = arguments[0].replace(/^ne:[\s]*/g,'').replace(/^nodee:[\s]*/g,'');
             return view.apply(this, arguments);
@@ -213,7 +213,7 @@ var definition = function() {
     };
     
     Framework.prototype.view = function(){
-        if((arguments[0]||'').substring(0,2)!=='ne:' && (arguments[0]||'').substring(0,11)!=='nodee:') origFwView.apply(this, arguments);
+        if((arguments[0]||'').substring(0,3)!=='ne:' && (arguments[0]||'').substring(0,6)!=='nodee:') origFwView.apply(this, arguments);
         else {
             arguments[0] = arguments[0].replace(/^ne:[\s]*/g,'').replace(/^nodee:[\s]*/g,'');
             return view.apply(this, arguments);
