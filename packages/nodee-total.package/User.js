@@ -105,7 +105,17 @@ User.on('beforeUpdate', function(next){
     
     if(user.roles) user.roles = replaceRoleWhiteSpaces(user.roles);
     user.clearCache(user);
-    next();
+    
+    // check user email duplicity (only if using JsonFileDataSource)
+    if(datasource !== 'MongoDataSource'){
+        user.constructor.colelction().find({ email:user.email }).exists(function(err, exists){
+            if(err) return next(err);
+            if(exists) return next(new Error('User Model: validation failed').details({ code:'INVALID', validErrs:{ email:['unique'] } }));
+            user.clearCache(user);
+            next();
+        });
+    }
+    else next();
 });
 
 User.on('beforeRemove', function(next){
