@@ -110,15 +110,17 @@ module.exports.install = function(){
             methods[m].instance = methods[m].instance || methods[m].single;
             methods[m].route = typeof methods[m].route === 'string' ? methods[m].route : '';
             methods[m].methodName = methods[m].instance || methods[m].collection;
+            methods[m].length = methods[m].length || framework['default-request-length'];
+            methods[m].timeout = methods[m].timeout || framework['default-request-timeout'];
             
             if(methods[m].instance){
                 methods[m].route = (methods[m].route ? route+'/'+methods[m].route : route+'/{id}').replace(/\/\//,'/'); // replace "//" with "/"
                 
-                framework.route(methods[m].route, framework.rest.instanceAction(modelName, methods[m]), flags.concat( methods[m].flags || [] ));    
+                framework.route(methods[m].route, framework.rest.instanceAction(modelName, methods[m]), { flags:flags.concat( methods[m].flags || [] ), length:methods[m].length, timeout:methods[m].timeout });
             }
             else if(methods[m].collection){
                 methods[m].route = (route+'/'+methods[m].route).replace(/\/\//,'/'); // replace "//" with "/"
-                framework.route(methods[m].route, framework.rest.collectionAction(modelName, methods[m]), flags.concat( methods[m].flags || [] ));    
+                framework.route(methods[m].route, framework.rest.collectionAction(modelName, methods[m]), { flags:flags.concat( methods[m].flags || [] ), length:methods[m].length, timeout:methods[m].timeout });    
             }
             else throw new Error('Method option not recognized, please use "single", or "collection" to scaffold rest endpoint');
         }
@@ -126,7 +128,7 @@ module.exports.install = function(){
         // add "_help" route
         framework.route(route + '/_help', function(){
             this.json(methods, null, true);
-        }, flags.concat(methods._help.flags || ['get']));
+        }, { flags:flags.concat(methods._help.flags || ['get']), length:methods._help.length, timeout:methods._help.timeout });
     };
     
     /*
@@ -270,7 +272,7 @@ function extractQuery(parsedQString, opts) {
     query.$page = parseInt(query.$page, 10) || (!query.$skip ? 1 : null);
     if(query.$page > 0) query.$skip = (query.$page - 1)*query.$limit;
     
-    return query
+    return query;
 }
 
 /**

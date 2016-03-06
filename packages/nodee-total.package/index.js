@@ -43,12 +43,20 @@ module.exports.install = function(){
         
         // Documentation: http://docs.totaljs.com/Framework/#framework.onCompileJS
         framework.onCompileScript = function(filename, content) {
-            if(!framework.isDebug) return uglify.minify(content, { fromString: true }).code;
+            if(!framework.isDebug) {
+                try {
+                    return uglify.minify(content, { fromString: true }).code;
+                }
+                catch(err){
+                    return '// Uglify-JS minification error (line ' +err.line+ ', col ' +err.col+ '): ' + 
+                           err.message.replace(/«/g,'"').replace(/»/g,'"') + ' \n\n' + content;
+                }
+            }
             else return content;
         };
     }
     catch(err){
-        console.warn('nodee-total: Node module "uglify-js" not found, client scripts will not be minified');
+        // console.warn('nodee-total: Node module "uglify-js" not found, client scripts will not be minified');
     }
     
     // include rest generators
