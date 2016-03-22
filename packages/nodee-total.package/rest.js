@@ -488,6 +488,7 @@ function instanceAction(ctx, opts, cb){ // cb(err, status, data)
         ModelCnst = ctx.ModelCnst,
         query = ctx.query,
         params = ctx.method==='GET' ? query.$params : ctx.body,
+        modifiedDT = (query.$params || {}).modifiedDT || (query.$find || {}).modifiedDT,
         resourceId = ctx.params.id;
     
     // action arguments priority - ctrl.params, query.$params, ctx.body
@@ -499,7 +500,7 @@ function instanceAction(ctx, opts, cb){ // cb(err, status, data)
     
     // if delete method, with optimistic concurrency
     if(ctx.method==='DELETE' && (ModelCnst.getDefaults().options || {}).optimisticLock===true){
-        doc.modifiedDT = (query.$find || {}).modifiedDT || (query.$params || {}).modifiedDT;
+        doc.modifiedDT = modifiedDT;
     }
     
     doc.validate();
@@ -544,6 +545,9 @@ function instanceAction(ctx, opts, cb){ // cb(err, status, data)
             if(err) errResponse.call(ctrl, err, cb, ctx.fail);
             else if(!doc) cb.call(ctrl, null, 404, { data: null }, ctx.success);
             else {
+                // change modifiedDT if filled
+                if(modifiedDT && (ModelCnst.getDefaults().options || {}).optimisticLock===true) doc.modifiedDT = modifiedDT;
+                
                 // custom instance method with arguments
                 if(args.length) {
                     doc[ opts.methodName ].apply(doc, args.concat(function(err, result){
