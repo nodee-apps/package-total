@@ -56,7 +56,7 @@ function Auth(opts){
         // do not accept roles from client on register
         if(self.body) delete self.body.roles;
         
-        Model(auth.userModel).new(self.body).create(function(err, user){
+        Model(auth.userModel).new(self.body).hashPass().create(function(err, user){
             if(err) framework.rest.errResponse(err, function(err, status, data){
                 if(err) self.view500(err);
                 else {
@@ -230,6 +230,14 @@ function Auth(opts){
         // authKey as query parameter
         var apiKey = (req.query || {}).apikey;
         if(apiKey) user = { apiKey:apiKey, ip:req.ip };
+        
+        var transmitKey = framework.config['transmit-key'] || framework.config['transmit-api-key'];
+        if(transmitKey && apiKey === transmitKey){
+            return next(true, {
+                id:'transmit',
+                roles:['transmit']
+            });
+        }
         
         if(!(user && (user.id || user.apiKey))) {
             // unlogged user

@@ -81,19 +81,18 @@ User.on('beforeCreate', function(next){
     if(!user.password) {
         return next(new Error('User Model: validation failed').details({ code:'INVALID', validErrs:{ password:['required'] } }));
     }
-    user.hashPass();
     
     // default role is "user"
     user.roles = replaceRoleWhiteSpaces(user.roles || ['user']);
     
     // generate apiKey
-    user.apiKey = guid();
+    user.apiKey = user.apiKey || guid();
     
     // check user email duplicity (only if using JsonFileDataSource)
     if(datasource !== 'MongoDataSource'){
-        user.constructor.colelction().find({ email:user.email }).exists(function(err, exists){
+        user.constructor.colelction().find({ $or:[{ email:user.email },{ apiKey:user.apiKey }] }).exists(function(err, exists){
             if(err) return next(err);
-            if(exists) return next(new Error('User Model: validation failed').details({ code:'INVALID', validErrs:{ email:['unique'] } }));
+            if(exists) return next(new Error('User Model: validation failed').details({ code:'INVALID', validErrs:{ email:['unique'], apiKey:['unique'] } }));
             next();
         });
     }
@@ -108,9 +107,9 @@ User.on('beforeUpdate', function(next){
     
     // check user email duplicity (only if using JsonFileDataSource)
     if(datasource !== 'MongoDataSource'){
-        user.constructor.colelction().find({ email:user.email }).exists(function(err, exists){
+        user.constructor.colelction().find({ $or:[{ email:user.email },{ apiKey:user.apiKey }] }).exists(function(err, exists){
             if(err) return next(err);
-            if(exists) return next(new Error('User Model: validation failed').details({ code:'INVALID', validErrs:{ email:['unique'] } }));
+            if(exists) return next(new Error('User Model: validation failed').details({ code:'INVALID', validErrs:{ email:['unique'], apiKey:['unique'] } }));
             user.clearCache(user);
             next();
         });
@@ -134,6 +133,7 @@ User.prototype.clearCache = function(){
 User.prototype.hashPass = function(password){
     var user = this;
     user.password = pass.hash(password || user.password);
+    return user;
 };
 
 User.prototype.changePass = function(oldPassword, newPassword, cb){ // cb(err)

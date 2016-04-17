@@ -2,11 +2,17 @@
 
 var Model = require('nodee-model');
 
-var ApiClient = Model.define('ApiClient', ['RestDataSource'], {});
+var ApiClient = Model.define('ApiClient', ['RestDataSource'], {
+    deleted:{ isBoolean:true }, // if softRemove
+    createdDT:{ date:true },
+    modifiedDT: { date:true }, // if optimisticLock
+});
 
 ApiClient.extendDefaults({
     connection:{
         // baseUrl:'yourapi.com/products',
+        // basePath:'/products',
+        // apiKey:'132asdas12234',
 
         // parsing
         dataKey:'data', // data key, if data is property of response object, e.g. { data:..., status:...}
@@ -17,16 +23,18 @@ ApiClient.extendDefaults({
         errorKey:'data', // if response status !== 200, parse errors
         
         // CRUD methods
-        one:{ method:'GET' }, // inspect container
-        all:{ method:'GET' },
-        create:{ method:'POST' },
-        update:{ method:'PUT' },
-        remove:{ method:'DELETE' }
+        one:{ method:'GET', url:'/{id}' }, // inspect container
+        all:{ method:'GET', url:'/', },
+        create:{ method:'POST', url:'/{id}', },
+        update:{ method:'PUT', url:'/{id}', },
+        remove:{ method:'DELETE', url:'/{id}', }
     },
     options:{
         hasCount: true, // if responses contains count
-        autoPaging: false, // will auto request next page if query.limit not reached
-        dynamicPageSize: false
+        autoPaging: true, // will auto request next page if query.limit not reached
+        dynamicPageSize: false,
+        simulateInlineUpdate: false, // this will read all documents that match query, than for each exec update (if false, it will perform only update)
+        simulateInlineRemove: true // same as simulateInlineUpdate but for remove
     }
 });
 
@@ -34,11 +42,16 @@ ApiClient.extendDefaults({
 ApiClient.addMethod('buildQuery', function(defaults, reqData){
     var $q = defaults.query || {};
     
+    if(defaults.options.fields) $q.$fields = defaults.options.fields;
+    if(defaults.options.skip) $q.$skip = defaults.options.skip;
     if(defaults.options.limit) $q.$limit = defaults.options.limit;
     if(defaults.options.sort) $q.$sort = defaults.options.sort;
     if(defaults.options.page) $q.$page = defaults.options.page;
     
-    return { $q: JSON.stringify($q) };
+    // ensure it will work even if optimistic lock is on
+    if(defaults.connection.command === 'remove') $q.modifiedDT = reqData.modifiedDT;
+    
+    return { apikey: defaults.connection.apiKey, $q: JSON.stringify($q) };
 });
 
 ApiClient.addMethod('buildHeaders', function(defaults, reqData){

@@ -223,6 +223,7 @@ function extractQuery(parsedQString, opts) {
     };
     
     var reservedKeys = {
+        apikey:true, // reserved for auth
         $sort:true,
         $skip:true,
         $limit:true,
@@ -323,6 +324,7 @@ function generateAction(restAction, modelName, opts, cb){
     opts.query = opts.query || {};
     opts.body = opts.body || {};
     opts.params = opts.params || {};
+    opts.includeHiddenFields = opts.includeHiddenFields || opts.includeHiddenProperties;
     
     // filter function will run after queryExtracted, but before rest action
     var filter = typeof opts.filter === 'function' ? opts.filter : function(ctx, cb){ cb(); };
@@ -337,13 +339,19 @@ function generateAction(restAction, modelName, opts, cb){
     return function(){
         var ctrl = this,
             ctx = {
+                methodName: opts.methodName,
+                includeHiddenFields: opts.includeHiddenFields,
+                
                 arguments: Array.prototype.slice.call(arguments,0),
                 params: object.extend(true, ctrl.params, opts.params),
                 query: object.extend(true, opts.extractQuery(ctrl.query, opts), opts.query),
                 body: object.isObject(ctrl.body) ? object.extend(true, ctrl.body, opts.body) : ctrl.body,
                 method: ctrl.method || ctrl.req.method,
                 ModelCnst: ModelCnst,
-                before: typeof opts.before === 'function' ? opts.before : function(ctx, cb){ cb(); }, // run after parsing body, and validation, but before model method execution
+                skipValidation: opts.skipValidation,
+                afterValidation: typeof (opts.afterValidation || opts.before) === 'function' ? (opts.afterValidation || opts.before) : function(ctx, cb){ cb(); }, // run after parsing body, and validation, but before model method execution
+                onInstance: typeof opts.onInstance === 'function' ? opts.onInstance : function(ctx, cb){ cb(); }, // run on instance load, but before action
+                access: typeof opts.access === 'function' ? opts.access : function(ctx, cb){ cb(); }, // get filter query for collection and instance search
                 success: typeof opts.success === 'function' ? opts.success : null,
                 fail: typeof opts.fail === 'function' ? opts.fail : null
             };
@@ -355,7 +363,7 @@ function generateAction(restAction, modelName, opts, cb){
         filter.call(ctrl, ctx, function(){
             restAction.call(ctrl, ctx, opts, cb); // cb(err, status, data)
         });
-    }
+    };
 }
 
 /**
@@ -375,105 +383,125 @@ function collectionAction(ctx, opts, cb){ // cb(err, status, data)
     // action arguments priority - ctrl.params, query.$params, ctx.body
     var args = ['GET','HEAD','DELETE'].indexOf(ctx.method)!==-1 ? (ctx.arguments.length ? ctx.arguments : (query.$params ? [query.$params]:[])) : [ctx.body];
        
-    function collQuery(plusLimit){
-        plusLimit = plusLimit || 0;
+    ctx.access.call(ctrl, ctx, function(err, accessQuery){
+        if(err) return errResponse.call(ctrl, err, cb, ctx.fail);
         
-        var q = ModelCnst.collection()
-            .extendDefaults({
-                cache:{
-                    duration: opts.cache.duration,
-                    use: opts.cache.use
-                }
-            })
-            .find(query.$find)
-            .sort(query.$sort)
-            .limit(query.$limit + plusLimit)
-            .skip(query.$skip)
-            .fields(query.$fields);
-        
-        if(typeof q[ opts.methodName ] !== 'function')
-            throw new Error('Model restAction: "' +ModelCnst._name+ '.collection()" has no method "' +opts.methodName+ '"');
-        
-        return q;
-    }
-    
-    if(opts.methodName === 'count') collQuery().count(function(err, count){
-        if(err) errResponse.call(ctrl, err, cb, ctx.fail);
-        else cb.call(ctrl, null, 200, { data:count }, ctx.success);
-    });
-    
-    else if(opts.methodName === 'one') collQuery().findId( ctrl.params.id || query.id ).one(function(err, doc){
-        if(err) errResponse.call(ctrl, err, cb, ctx.fail);
-        else if(!doc) cb.call(ctrl, null, 404, { data: null }, ctx.success);
-        else cb.call(ctrl, null, 200, { data: doc }, ctx.success);
-    });
-    
-    // get +1 record to determine that result has next page without count
-    else if(opts.methodName === 'all') collQuery(hasCount ? 0 : 1).all(function(err, docs){
-        if(err) errResponse.call(ctrl, err, cb, ctx.fail);
-        else {
-            if(hasCount){
-                next = Math.ceil((docs.count || 0)/query.$limit) - (query.$page || 0) > 0;
-            }
-            else if(docs.length === query.$limit+1) {
-                next = true;
-                docs.pop();
-            }
-            
-            if(opts.count){
-                collQuery().count(function(err, count){
-                    if(err) errResponse.call(ctrl, err, cb, ctx.fail);
-                    else {
-                        var r = {
-                            data: docs,
-                            pagination:{
-                                page: query.$page,
-                                pages: Math.ceil((count || 0)/query.$limit),
-                                limit: query.$limit,
-                                next: next,
-                                prev: prev,
-                                count: count
-                            }
-                        };
-                        for(var key in docs) if(key!=='count' && docs.hasOwnProperty(key) && !(key < docs.length)) r[key] = docs[key];
-                        cb.call(ctrl, null, 200, r, ctx.success);
+        function collQuery(plusLimit){
+            plusLimit = plusLimit || 0;
+
+            var q = ModelCnst.collection()
+                .extendDefaults({
+                    cache:{
+                        duration: opts.cache.duration,
+                        use: opts.cache.use
                     }
-                });
-            }
+                })
+                .find(object.extend(true, query.$find||{}, accessQuery||{}))
+                .sort(query.$sort)
+                .limit(query.$limit + plusLimit)
+                .skip(query.$skip)
+                .fields(query.$fields);
+
+            if(typeof q[ ctx.methodName ] !== 'function')
+                throw new Error('Model restAction: "' +ModelCnst._name+ '.collection()" has no method "' +ctx.methodName+ '"');
+
+            return q;
+        }
+
+        if(ctx.methodName === 'count') collQuery().count(function(err, count){
+            if(err) errResponse.call(ctrl, err, cb, ctx.fail);
+            else cb.call(ctrl, null, 200, { data:count }, ctx.success);
+        });
+
+        else if(ctx.methodName === 'one') collQuery().findId( ctrl.params.id || query.id ).one(function(err, doc){
+            if(err) errResponse.call(ctrl, err, cb, ctx.fail);
+            else if(!doc) cb.call(ctrl, null, 404, { data: null }, ctx.success);
+            else cb.call(ctrl, null, 200, { data: includeHiddenFields(ctx.includeHiddenFields, doc) }, ctx.success);
+        });
+
+        // get +1 record to determine that result has next page without count
+        else if(ctx.methodName === 'all') collQuery(hasCount ? 0 : 1).all(function(err, docs){
+            if(err) errResponse.call(ctrl, err, cb, ctx.fail);
             else {
-                var r = {
-                    data: docs,
-                    pagination:{
-                        page: query.$page,
-                        pages: Math.ceil((docs.count || 0)/query.$limit),
-                        limit: query.$limit,
-                        next: next,
-                        prev: prev,
-                        count: docs.count // restModel has data.count prop if pagination found
-                    }
-                };
-                for(var key in docs) if(key!=='count' && docs.hasOwnProperty(key) && !(key < docs.length)) r[key] = docs[key];
-                cb.call(ctrl, null, 200, r, ctx.success);
+                if(hasCount){
+                    next = Math.ceil((docs.count || 0)/query.$limit) - (query.$page || 0) > 0;
+                }
+                else if(docs.length === query.$limit+1) {
+                    next = true;
+                    docs.pop();
+                }
+
+                if(opts.count){
+                    collQuery().count(function(err, count){
+                        if(err) errResponse.call(ctrl, err, cb, ctx.fail);
+                        else {
+                            var r = {
+                                data: includeHiddenFields(ctx.includeHiddenFields, docs),
+                                pagination:{
+                                    page: query.$page,
+                                    pages: Math.ceil((count || 0)/query.$limit),
+                                    limit: query.$limit,
+                                    next: next,
+                                    prev: prev,
+                                    count: count
+                                }
+                            };
+                            for(var key in docs) if(key!=='count' && docs.hasOwnProperty(key) && !(key < docs.length)) r[key] = docs[key];
+                            cb.call(ctrl, null, 200, r, ctx.success);
+                        }
+                    });
+                }
+                else {
+                    var r = {
+                        data: includeHiddenFields(ctx.includeHiddenFields, docs),
+                        pagination:{
+                            page: query.$page,
+                            pages: Math.ceil((docs.count || 0)/query.$limit),
+                            limit: query.$limit,
+                            next: next,
+                            prev: prev,
+                            count: docs.count // restModel has data.count prop if pagination found
+                        }
+                    };
+                    for(var key in docs) if(key!=='count' && docs.hasOwnProperty(key) && !(key < docs.length)) r[key] = docs[key];
+                    cb.call(ctrl, null, 200, r, ctx.success);
+                }
             }
+        });
+
+        // custom collection method with arguments
+        else if(args.length){
+            var self = collQuery();
+            self[ ctx.methodName ].apply(self, args.concat(function(err, result){
+                if(err) errResponse.call(ctrl, err, cb, ctx.fail);
+                else cb.call(ctrl, null, 200, { data: includeHiddenFields(ctx.includeHiddenFields, result) }, ctx.success);
+            }));
+        }
+
+        // custom collection method without arguments
+        else {
+            collQuery()[ ctx.methodName ](function(err, result){
+                if(err) errResponse.call(ctrl, err, cb, ctx.fail);
+                else cb.call(ctrl, null, 200, { data: includeHiddenFields(ctx.includeHiddenFields, result) }, ctx.success);
+            });
         }
     });
+}
+
+/**
+ * helper for disabling default model toJSON
+ * @param   {Boolean}  enable
+ * @param   {Object}   result
+ * @returns {Object}  result
+ */
+function includeHiddenFields(enable, result){
+    if(!enable) return result;
     
-    // custom collection method with arguments
-    else if(args.length){
-        var self = collQuery();
-        self[ opts.methodName ].apply(self, args.concat(function(err, result){
-            if(err) errResponse.call(ctrl, err, cb, ctx.fail);
-            else cb.call(ctrl, null, 200, { data: result }, ctx.success);
-        }));
+    if(Array.isArray(result)) for(var i=0;i<result.length;i++){
+        result[i] = result[i].getData ? result[i].getData() : result[i];
     }
-    
-    // custom collection method without arguments
-    else {
-        collQuery()[ opts.methodName ](function(err, result){
-            if(err) errResponse.call(ctrl, err, cb, ctx.fail);
-            else cb.call(ctrl, null, 200, { data: result }, ctx.success);
-        });
-    }
+    else result = result.getData ? result.getData() : result;
+    return result;
 }
 
 
@@ -503,65 +531,76 @@ function instanceAction(ctx, opts, cb){ // cb(err, status, data)
         doc.modifiedDT = modifiedDT;
     }
     
-    doc.validate();
-    
-    if(!doc.isValid()){
-        return cb.call(ctrl, null, 400, { data: doc.validErrs() }, ctx.success);
+    if(!ctx.skipValidation){
+        doc.validate();
+        if(!doc.isValid()){
+            return cb.call(ctrl, null, 400, { data: doc.validErrs() }, ctx.success);
+        }
     }
     
-    ctx.before.call(ctrl, ctx, function(){
+    ctx.afterValidation.call(ctrl, ctx, function(err){
+        if(err) return errResponse.call(ctrl, err, cb, ctx.fail);
         
-        if(['create','update'].indexOf(opts.methodName) !== -1) doc[ opts.methodName ](function(err, mDoc){
-            if(err) errResponse.call(ctrl, err, cb, ctx.fail);
-            else cb.call(ctrl, null, 200, { data:mDoc }, ctx.success);
-        });
-        
-        // same as custom method
-        //else if(opts.methodName === 'remove') doc.remove(function(err){
-        //    if(err) errResponse.call(ctrl, err, cb, ctx.fail);
-        //    else cb.call(ctrl, null, 200, { data:null }, ctx.success);
-        //});
-        
-        else if(opts.trust || opts.trustBody){
-            args = ctx.arguments.length ? ctx.arguments : (query.$params ? [query.$params]:[]);
+        ctx.access.call(ctrl, ctx, function(err, accessQuery){
+            if(err) return errResponse.call(ctrl, err, cb, ctx.fail);
             
-            // custom instance method with arguments
-            if(args.length) {
-                doc[ opts.methodName ].apply(doc, args.concat(function(err, result){
-                    if(err) errResponse.call(ctrl, err, cb, ctx.fail);
-                    else cb.call(ctrl, null, 200, { data: result }, ctx.success);
-                }));
-            }
-            
-            // custom instance method without arguments, 
-            else doc[ opts.methodName ](function(err, result){
+            if(ctx.methodName === 'create' || ((!opts.onInstance && !accessQuery) && ctx.methodName === 'update')) doc[ ctx.methodName ](function(err, mDoc){
                 if(err) errResponse.call(ctrl, err, cb, ctx.fail);
-                else cb.call(ctrl, null, 200, { data: result }, ctx.success);
+                else cb.call(ctrl, null, 200, { data:mDoc }, ctx.success);
             });
-        }
-        
-        // else find instance by Id and run method
-        else ModelCnst.collection().findId(resourceId).one(function(err, doc){
-            if(err) errResponse.call(ctrl, err, cb, ctx.fail);
-            else if(!doc) cb.call(ctrl, null, 404, { data: null }, ctx.success);
-            else {
-                // change modifiedDT if filled
-                if(modifiedDT && (ModelCnst.getDefaults().options || {}).optimisticLock===true) doc.modifiedDT = modifiedDT;
-                
+
+            // same as custom method
+            //else if(ctx.methodName === 'remove') doc.remove(function(err){
+            //    if(err) errResponse.call(ctrl, err, cb, ctx.fail);
+            //    else cb.call(ctrl, null, 200, { data:null }, ctx.success);
+            //});
+
+            else if((opts.trust || opts.trustBody) && !opts.access){
+                args = ctx.arguments.length ? ctx.arguments : (query.$params ? [query.$params]:[]);
+                if(ctx.methodName === 'update') args = []; // update has no arguments, except callback
+
                 // custom instance method with arguments
                 if(args.length) {
-                    doc[ opts.methodName ].apply(doc, args.concat(function(err, result){
+                    doc[ ctx.methodName ].apply(doc, args.concat(function(err, result){
                         if(err) errResponse.call(ctrl, err, cb, ctx.fail);
-                        else cb.call(ctrl, null, 200, { data: result }, ctx.success);
+                        else cb.call(ctrl, null, 200, { data: includeHiddenFields(ctx.includeHiddenFields, result) }, ctx.success);
                     }));
                 }
-                
-                // custom instance method without arguments
-                else doc[ opts.methodName ](function(err, result){
+
+                // custom instance method without arguments, 
+                else doc[ ctx.methodName ](function(err, result){
                     if(err) errResponse.call(ctrl, err, cb, ctx.fail);
-                    else cb.call(ctrl, null, 200, { data: result }, ctx.success);
+                    else cb.call(ctrl, null, 200, { data: includeHiddenFields(ctx.includeHiddenFields, result) }, ctx.success);
                 });
             }
+
+            // else find instance by Id and run method
+            else ModelCnst.collection().find( object.extend(true, { id:resourceId }, accessQuery||{}) ).one(function(err, doc){
+                if(err) errResponse.call(ctrl, err, cb, ctx.fail);
+                else if(!doc) return cb.call(ctrl, null, 404, { data: null }, ctx.success);
+
+                ctx.model = ctx.doc = ctx.document = doc;
+                ctx.onInstance.call(ctrl, ctx, function(){
+                    // change modifiedDT if filled
+                    if(modifiedDT && (ModelCnst.getDefaults().options || {}).optimisticLock===true) doc.modifiedDT = modifiedDT;
+                    if(ctx.methodName === 'update') args = []; // update has no arguments, except callback
+
+                    // custom instance method with arguments
+                    if(args.length) {
+                        doc[ ctx.methodName ].apply(doc, args.concat(function(err, result){
+                            if(err) errResponse.call(ctrl, err, cb, ctx.fail);
+                            else cb.call(ctrl, null, 200, { data: includeHiddenFields(ctx.includeHiddenFields, result) }, ctx.success);
+                        }));
+                    }
+
+                    // custom instance method without arguments
+                    else doc[ ctx.methodName ](function(err, result){
+                        if(err) errResponse.call(ctrl, err, cb, ctx.fail);
+                        else cb.call(ctrl, null, 200, { data: includeHiddenFields(ctx.includeHiddenFields, result) }, ctx.success);
+                    });
+                });
+            });
+             
         });
     });
 }

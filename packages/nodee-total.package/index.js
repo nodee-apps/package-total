@@ -356,4 +356,9 @@ var definition = function() {
 
 setTimeout(function() {
     framework.eval(definition);
+    
+    /*
+     * User Transmit API
+     */
+    require('./UserTransmitAPI.js');
 }, 0);
