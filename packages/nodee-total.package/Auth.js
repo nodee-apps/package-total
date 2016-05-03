@@ -171,13 +171,13 @@ function Auth(opts){
                         self.status = 500;
                         return self.json({ data:'Mailer Not Configured'});
                     }
-                    
+
                     // user.forgotPassToken = guid();
                     var new_password = generateId();
                     user.hashPass(new_password);
                     user.update(function(err, newUser){
                         if(err) return self.view500(err);
-                        
+
                         self.sendMail({
                             config: authMailer,
                             subject: authMailer.subject,

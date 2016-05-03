@@ -15,9 +15,12 @@ session-cookie-expires        : 24
 // auth-datasource-filePath      : ./databases/users.json
 auth-datasource-database      : dev
 auth-datasource-collection    : users
+auth-users-caching            : true
 auth-mailer-use               : mailer-primary
 auth-mailer-subject           : Password changed
 auth-mailer-forgotpass        : emails/forgotpass
+//auth-default-roles            : user
+//auth-default-allowedIP        : *
 
 // main datasource setings
 datasource-primary-database   : admin_dev

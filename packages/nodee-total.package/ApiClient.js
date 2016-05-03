@@ -23,7 +23,7 @@ ApiClient.extendDefaults({
         errorKey:'data', // if response status !== 200, parse errors
         
         // CRUD methods
-        one:{ method:'GET', url:'/{id}' }, // inspect container
+        one:{ method:'GET', url:'/{id}' },
         all:{ method:'GET', url:'/', },
         create:{ method:'POST', url:'/{id}', },
         update:{ method:'PUT', url:'/{id}', },

@@ -105,7 +105,6 @@ var definition = function() {
             model = {};
         }
         
-        opts.template = view || opts.template;
         opts.to = to || opts.to || opts.address;
         opts.subject = subject || opts.subject;
         opts.template = view || opts.view || opts.template || '';

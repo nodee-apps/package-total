@@ -2,18 +2,9 @@ var Model = require('nodee-model');
 
 var transmitBasePath = framework.config['transmit-base-path'] || '/_transmit';
 
-var UserTransmitAPI = Model.define( 'UserTransmitAPI', [ 'ApiClient' ], {
-    email:{ isEmail:true },
-    roles:{ isArray:true },
-    password:{ isString:true, minLength:5 },
-    lastLoginDT:{ toDate:true },
-    disabled:{ isBoolean:true },
-    forgotPassToken:{ isString:true },
-    apiKey:{ isString: true }, // user can have direct access to resources via url
-    allowedIP:{ isArray: true }, // allowed IP to access api, if empty, allowed are all IPs
-
-    // user profile, some profile data, such as address, phone, etc ...
-    profile:{ model: 'UserProfile' },
+var UserTransmitAPI = Model.define( 'UserTransmitAPI', [ 'ApiClient' ], Model('User').getSchema());
+UserTransmitAPI.extendSchema({
+    password:{ hidden:false }, // show password
 });
 
 UserTransmitAPI.extendDefaults({

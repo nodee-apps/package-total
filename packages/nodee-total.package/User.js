@@ -5,6 +5,9 @@ var Model = require('nodee-model'),
     guid = require('nodee-utils').guid,
     datasource = framework.config['auth-datasource'] || 'MongoDataSource';
 
+var defaultRoles = framework.config['auth-default-roles'] ? framework.config['auth-default-roles'].split(',') : ['user'];
+var defaultAllowedIP = framework.config['auth-default-allowedIP'] ? framework.config['auth-default-allowedIP'].split(',') : null;
+
 var UserProfile = Model.define('UserProfile', {
     language:{ isString:true }, // preffered language
     nickname:{ isString:true },
@@ -50,11 +53,13 @@ connection.port = connection.port || framework.config['datasource-primary-port']
 connection.database = connection.database || framework.config['datasource-primary-database'] || framework.config.name;
 connection.collection = connection.collection || 'users';
 
+var userCacheDuration = framework.config['auth-users-caching'];
+if(userCacheDuration === true) userCacheDuration = 1*60*1000; // default 1 minute
 
 User.extendDefaults({
     connection: connection,
     cache:{
-        duration: 3*60*1000 // default 3 minutes
+        duration: userCacheDuration || 0
     },
     options:{
         sort:{ createdDT:1 }
@@ -83,10 +88,13 @@ User.on('beforeCreate', function(next){
     }
     
     // default role is "user"
-    user.roles = replaceRoleWhiteSpaces(user.roles || ['user']);
+    user.roles = replaceRoleWhiteSpaces(user.roles || defaultRoles);
     
     // generate apiKey
     user.apiKey = user.apiKey || guid();
+    
+    // default allowed api IPs
+    if(defaultAllowedIP) user.allowedIP = defaultAllowedIP;
     
     // check user email duplicity (only if using JsonFileDataSource)
     if(datasource !== 'MongoDataSource'){

@@ -80,12 +80,12 @@ module.exports.install = function(){
             flags = opts.flags;
             modelName = opts.model || opts.modelName;
         }
-        else if(arguments.length === 2 && typeof arguments[1] !== 'string' && arguments[1].__typeof !== 'Model'){
+        else if(arguments.length === 2 && typeof arguments[1] !== 'string' && (!arguments[1].__typeof || !arguments[1].__typeof('Model'))){
             opts = arguments[1];
             modelName = opts.model || opts.modelName;
             flags = opts.flags;
         }
-        else if(arguments.length === 3 && typeof arguments[1] !== 'string' && arguments[1].__typeof !== 'Model'){
+        else if(arguments.length === 3 && typeof arguments[1] !== 'string' && (!arguments[1].__typeof || !arguments[1].__typeof('Model'))){
             opts = arguments[1];
             flags = opts.flags;
         }
@@ -98,7 +98,7 @@ module.exports.install = function(){
         methods._help = {};
         
         if(typeof route !== 'string') throw new Error('Wrong arguments: missing base route');
-        if(typeof modelName !== 'string' && modelName.__typeof !== 'Model') throw new Error('Wrong arguments: missing modelName');
+        if(typeof modelName !== 'string' && (!modelName.__typeof || !modelName.__typeof('Model'))) throw new Error('Wrong arguments: missing modelName');
         
         for(var m=0;m<methods.length;m++){
             if(methods[m]._help) {
@@ -308,7 +308,7 @@ function errResponse(err, cb, failCb){
  * @returns {Function}  action method
  */
 function generateAction(restAction, modelName, opts, cb){
-    if(typeof modelName !== 'string' && modelName.__typeof !== 'Model') throw new Error('Model restAction: first argument have to be string, or Model constructor');
+    if(typeof modelName !== 'string' && (!modelName.__typeof || !modelName.__typeof('Model'))) throw new Error('Model restAction: first argument have to be string, or Model constructor');
     if(typeof opts === 'string'){
         opts = { methodName: opts };
     }
@@ -332,7 +332,7 @@ function generateAction(restAction, modelName, opts, cb){
     opts.success = opts.success || opts.onSuccess;
     opts.fail = opts.fail || opts.onFail;
     
-    var ModelCnst = modelName.__typeof === 'Model' ? modelName : Model(modelName);
+    var ModelCnst = (modelName.__typeof && modelName.__typeof('Model')) ? modelName : Model(modelName);
     if(!ModelCnst) throw new Error('Model restAction: cannot find model name "' +modelName+ '"');
     
     // return rest action
@@ -413,11 +413,15 @@ function collectionAction(ctx, opts, cb){ // cb(err, status, data)
             else cb.call(ctrl, null, 200, { data:count }, ctx.success);
         });
 
-        else if(ctx.methodName === 'one') collQuery().findId( ctrl.params.id || query.id ).one(function(err, doc){
-            if(err) errResponse.call(ctrl, err, cb, ctx.fail);
-            else if(!doc) cb.call(ctrl, null, 404, { data: null }, ctx.success);
-            else cb.call(ctrl, null, 200, { data: includeHiddenFields(ctx.includeHiddenFields, doc) }, ctx.success);
-        });
+        else if(ctx.methodName === 'one') {
+            var cq = collQuery();
+            if(ctrl.params.id || query.id) cq = cq.findId( ctrl.params.id || query.id );
+            cq.one(function(err, doc){
+                if(err) errResponse.call(ctrl, err, cb, ctx.fail);
+                else if(!doc) cb.call(ctrl, null, 404, { data: null }, ctx.success);
+                else cb.call(ctrl, null, 200, { data: includeHiddenFields(ctx.includeHiddenFields, doc) }, ctx.success);
+            });
+        }
 
         // get +1 record to determine that result has next page without count
         else if(ctx.methodName === 'all') collQuery(hasCount ? 0 : 1).all(function(err, docs){
