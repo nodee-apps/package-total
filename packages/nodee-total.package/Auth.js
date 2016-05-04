@@ -325,6 +325,9 @@ module.exports.install = function(){
         var routeName = ctrl.subscribe.route.name + '/';
         var urlPath = ctrl.uri.pathname + '/';
         
+        // exclude ready,health routes - they should allways work
+        if(routeName==='/_ready/' || routeName==='/_healthy/') return;
+        
         // FIX: do not allow another route, outside auth area, to handle requests to auth area
         if(routeName.substring(0,2)!=='#4' && routeName.substring(0,2)!=='#5' && !ctrl.req.is401){
             var areaRequest = false, areaRoute = false;

@@ -21,6 +21,56 @@ module.exports.version = '0.6.0';
 module.exports.rest = rest;
 module.exports.Auth = Auth;
 
+/*
+ * Readiness check
+ */
+
+// ready state list
+module.exports.readyModules = { framework:false, 'nodee-total':false };
+module.exports.setReady = function(moduleName, isReady){
+    if(arguments.length !== 2) throw new Error('Wrong arguments');
+    this.readyModules[moduleName] = isReady;
+};
+
+module.exports.isReady = function(moduleName){
+    if(moduleName) return this.readyModules[moduleName];
+    for(var key in this.readyModules) if(!this.readyModules[key]) return false;
+    return true;
+};
+
+framework.route('/_ready',function(){
+    if(module.exports.isReady()) return this.json(module.exports.readyModules);
+    this.status = 500;
+    this.json(module.exports.readyModules);
+},['get']);
+
+/*
+ * Healthy check 
+ */
+
+// healthy state list
+module.exports.healthyModules = { 'nodee-total':false };
+module.exports.setHealthy = function(moduleName, isHealthy){
+    if(arguments.length !== 2) throw new Error('Wrong arguments');
+    this.healthyModules[moduleName] = isHealthy;
+};
+
+module.exports.isHealthy = function(moduleName){
+    if(moduleName) return this.healthyModules[moduleName];
+    for(var key in this.healthyModules) if(!this.healthyModules[key]) return false;
+    return true;
+};
+
+framework.route('/_healthy',function(){
+    if(module.exports.isHealthy()) return this.json(module.exports.healthyModules);
+    this.status = 500;
+    this.json(module.exports.healthyModules);
+},['get']);
+
+/*
+ * Install
+ */
+
 module.exports.install = function(){
     // remember views directory ID
     eViewEngine.viewDirId = framework.config['directory-views'].replace(/^\//, '').replace(/\/$/, ''); // /myapp/views/ --> myapp/views
@@ -65,6 +115,15 @@ module.exports.install = function(){
     // include auth
     Auth.install();
     
+    // init nodee-total
+    framework.eval(definition);
+    
+    // User Transmit API
+    require('./UserTransmitAPI.js');
+    
+    framework.on('ready', function(){
+        module.exports.setReady('framework', true);
+    });
 };
 
 function body2object(req, res, next, options, ctrl) {
@@ -78,8 +137,20 @@ function body2object(req, res, next, options, ctrl) {
     next();
 }
 
-var definition = function() {
+function definition(){
     
+    // catch all errors to change healthy state
+    var onErrorOriginal = Framework.prototype.onError;
+    Framework.prototype.onError = function(err, name, uri) {
+        var nodee_total = MODULE('nodee-total');
+        
+        // if nodee-total module does not exists, app will not be ready and healthy
+        if(nodee_total) nodee_total.setHealthy(name || uri || 'undefined', false);
+        
+        // call original error handler
+        return onErrorOriginal.call(this, err, name, uri);
+    };
+
     // disable throwing error on Mail.emit('error', cb) with empty listener,
     // sendMail function will callback or throw error
     Mail.on('error', function(err){ });
@@ -351,13 +422,24 @@ var definition = function() {
         
         return self;
     };
+    
+    // set nodee-total ready and healthy
+    setImmediate(function(){
+        var nodee_total = MODULE('nodee-total');
+        nodee_total.setReady('nodee-total', true);
+        nodee_total.setHealthy('nodee-total', true);
+    });
 };
 
-setTimeout(function() {
-    framework.eval(definition);
-    
-    /*
-     * User Transmit API
-     */
-    require('./UserTransmitAPI.js');
-}, 0);
+//setTimeout(function() {
+//    framework.eval(definition);
+//    
+//    /*
+//     * User Transmit API
+//     */
+//    require('./UserTransmitAPI.js');
+//    
+//    setTimeout(function(){
+//        MODULE('nodee-total');
+//    },10);
+//}, 0);
