@@ -67,6 +67,10 @@ framework.route('/_healthy',function(){
     this.json(module.exports.healthyModules);
 },['get']);
 
+framework.on('ready', function(){
+    module.exports.setReady('framework', true);
+});
+
 /*
  * Install
  */
@@ -120,10 +124,6 @@ module.exports.install = function(){
     
     // User Transmit API
     require('./UserTransmitAPI.js');
-    
-    framework.on('ready', function(){
-        module.exports.setReady('framework', true);
-    });
 };
 
 function body2object(req, res, next, options, ctrl) {
