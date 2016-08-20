@@ -98,7 +98,7 @@ User.on('beforeCreate', function(next){
     
     // check user email duplicity (only if using JsonFileDataSource)
     if(datasource !== 'MongoDataSource'){
-        user.constructor.colelction().find({ $or:[{ email:user.email },{ apiKey:user.apiKey }] }).exists(function(err, exists){
+        user.constructor.collection().find({ $or:[{ email:user.email },{ apiKey:user.apiKey }] }).exists(function(err, exists){
             if(err) return next(err);
             if(exists) return next(new Error('User Model: validation failed').details({ code:'INVALID', validErrs:{ email:['unique'], apiKey:['unique'] } }));
             next();
@@ -115,7 +115,7 @@ User.on('beforeUpdate', function(next){
     
     // check user email duplicity (only if using JsonFileDataSource)
     if(datasource !== 'MongoDataSource'){
-        user.constructor.colelction().find({ $or:[{ email:user.email },{ apiKey:user.apiKey }] }).exists(function(err, exists){
+        user.constructor.collection().find({ id:{ $ne:user.id }, $or:[{ email:user.email },{ apiKey:user.apiKey }] }).exists(function(err, exists){
             if(err) return next(err);
             if(exists) return next(new Error('User Model: validation failed').details({ code:'INVALID', validErrs:{ email:['unique'], apiKey:['unique'] } }));
             user.clearCache(user);

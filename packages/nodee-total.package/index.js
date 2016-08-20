@@ -298,6 +298,12 @@ function definition(){
         }
     };
     
+    // total.js 2.0 compatibility helper
+    function includePackageSuffix(viewName){
+        if(framework.version < 2000) return viewName;
+        return viewName.match(/@([^\/]+)\.package/) ? viewName : viewName.replace(/@([^\/])+/,function($1){ return $1+'.package'; });
+    }
+    
     /*
     Response view
     @name {String}
@@ -328,8 +334,12 @@ function definition(){
         try {
             // load view sync if this is view from package
             if(name[0] === '@') {
+                name = includePackageSuffix(name);
                 value = eViewEngine.renderSync(eViewEngine.tempDirId, name, model, mode, containers, function(viewName){
-                    if(viewName[0]==='@') return viewName.substring(1);
+                    if(viewName[0]==='@') {
+                        viewName = includePackageSuffix(viewName);
+                        return viewName.substring(1);
+                    }
                     else return viewName;
                 });
             }

@@ -116,19 +116,27 @@ module.exports.install = function(){
             if(methods[m].instance){
                 methods[m].route = (methods[m].route ? route+'/'+methods[m].route : route+'/{id}').replace(/\/\//,'/'); // replace "//" with "/"
                 
-                framework.route(methods[m].route, framework.rest.instanceAction(modelName, methods[m]), { flags:flags.concat( methods[m].flags || [] ), length:methods[m].length, timeout:methods[m].timeout });
+                framework.route(methods[m].route, 
+                                framework.rest.instanceAction(modelName, methods[m]), 
+                                flags.concat( methods[m].flags || [] ).concat( methods[m].timeout ? [ methods[m].timeout ] : [] ), 
+                                methods[m].length);
             }
             else if(methods[m].collection){
                 methods[m].route = (route+'/'+methods[m].route).replace(/\/\//,'/'); // replace "//" with "/"
-                framework.route(methods[m].route, framework.rest.collectionAction(modelName, methods[m]), { flags:flags.concat( methods[m].flags || [] ), length:methods[m].length, timeout:methods[m].timeout });    
+                
+                framework.route(methods[m].route, 
+                                framework.rest.collectionAction(modelName, methods[m]), 
+                                flags.concat( methods[m].flags || [] ).concat( methods[m].timeout ? [ methods[m].timeout ] : [] ), 
+                                methods[m].length);
             }
             else throw new Error('Method option not recognized, please use "single", or "collection" to scaffold rest endpoint');
         }
         
         // add "_help" route
-        framework.route(route + '/_help', function(){
-            this.json(methods, null, true);
-        }, { flags:flags.concat(methods._help.flags || ['get']), length:methods._help.length, timeout:methods._help.timeout });
+        framework.route(route + '/_help', 
+                        function(){ this.json(methods, null, true); }, 
+                        flags.concat(methods._help.flags || ['get']).concat( methods._help.timeout ? [ methods._help.timeout ] : [] ), 
+                        methods._help.length);
     };
     
     /*

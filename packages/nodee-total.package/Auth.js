@@ -332,7 +332,7 @@ module.exports.install = function(){
         if(routeName.substring(0,2)!=='#4' && routeName.substring(0,2)!=='#5' && !ctrl.req.is401){
             var areaRequest = false, areaRoute = false;
             for(var i=0;i<Auth.areas.length;i++){
-                if((urlPath).indexOf(Auth.areas[i]) === 0) { // request inside auth area
+                if(urlPath.indexOf(Auth.areas[i]) === 0) { // request inside auth area
                     areaRequest = true;
                     if(routeName.indexOf(Auth.areas[i]) === 0) areaRoute = true; // route from inside auth area
                     break;
