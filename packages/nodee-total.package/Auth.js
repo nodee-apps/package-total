@@ -19,7 +19,7 @@ module.exports = Auth;
  * Authentication constructor
  * @param {String} basePath authentication path, useful when multiple auth areas in one app (e.g. /admin, /eshop, ...)
  */
-function Auth(opts){
+function Auth(opts, initCb){
     opts = opts || {};
     
     var auth = this;
@@ -35,7 +35,9 @@ function Auth(opts){
     auth.forgotPassEmail = opts.forgotPassEmail;
     auth.forgotPassTemplate = opts.forgotPassTemplate;
     
-    Model(auth.userModel).init();
+    Model(auth.userModel).init(function(){
+        if(initCb) initCb();
+    });
     
     if(auth.basePath[ auth.basePath.length-1 ] !== '/') auth.basePath += '/';
     
