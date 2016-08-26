@@ -55,12 +55,13 @@ module.exports.install = function(){
         var route = (ctrl.subscribe || {}).route;
         var path = ctrl.uri.path.split('/');
         path[ path.length-1 ] = path[ path.length-1 ].replace(/\?.*$/,'');
+        var routeUrl = route.name.replace(/^\//,'').split('/');
         
         var index, paramName;
         if(route && path){
             for(var i=0;i<route.param.length;i++){
                 index = route.param[i];
-                paramName = route.url[ index ];
+                paramName = routeUrl[ index ];
                 ctrl.params[ paramName.substring( 1, paramName.length-1 ) ] = decodeURIComponent(path[ index+1 ]).replace(/U\+FF0E/g,'.');
             }
         }
