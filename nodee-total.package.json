@@ -1,0 +1,144 @@
+{
+    "name":"nodee-total",
+    "version":"1.0.0",
+    "config":{
+        "name": {
+            "description": "IP, on which app will be listening (0.0.0.0 means any IP)",
+            "value": "",
+            "required": true
+        },
+
+        "default-ip": {
+            "description": "IP, on which app will be listening (0.0.0.0 means any IP)",
+            "value": "0.0.0.0",
+            "required": true
+        },
+        "default-port": {
+            "description": "Port, on which app will be listening",
+            "value": 80,
+            "required": true
+        },
+
+        "datasource-primary-host":{
+            "description": "Primary datasource config is used as default datasource config, usually it is mongodb on localhost",
+            "value": "localhost",
+            "required":true
+        },
+        "datasource-primary-port":{
+            "description": "Primary datasource config is used as default datasource config, usually it is mongodb on port 27017",
+            "value": 27017,
+            "required":true
+        },
+        "datasource-primary-database":{
+            "description": "Leave blank to use application name as database name",
+            "value": ""
+        },
+
+        "session-cookie-name": {
+            "description": "Session cookie name",
+            "value": "__user",
+            "required": true
+        },
+        "session-cookie-secure": {
+            "description": "If checked, session cookie will be send to server only if HTTPS (we strongly recommend to leave it checked)",
+            "value": true,
+            "required": true
+        },
+        "session-cookie-httpOnly": {
+            "description": "If checked, session cookie will not be accessible by javascript (we strongly recommend to leave it checked)",
+            "value": true,
+            "required": true
+        },
+        "session-cookie-expires": {
+            "description": "Session cookie expiration in hours, after this period, user will be signed out",
+            "value": 24,
+            "required": true
+        },
+
+        "auth-default-roles": {
+            "description": "Default role of every registered user signed in, do not use roles such as 'admin'",
+            "value": "user",
+            "required": true
+        },
+        "auth-default-allowedIP": {
+            "description": "Default api allowed IP of every registered user signed in (use '*' to allow any)",
+            "value": ""
+        },
+        "auth-datasource": {
+            "description": "Auth data source - do not use JsonFileDataSource in production",
+            "value": [ "MongoDataSource", "JsonFileDataSource" ],
+            "required": true
+        },
+        "auth-datasource-filePath": {
+            "description": "If using JsonFileDataSource, this will be required",
+            "value": [ "", "./databases/users.json" ]
+        },
+        "auth-datasource-database": {
+            "description": "If using MongoDataSource, leave blank to use primary datasource database",
+            "value": ""
+        },
+        "auth-datasource-collection": {
+            "description": "Auth Database collection name",
+            "value": "users",
+            "required": true
+        },
+        "auth-datasource-caching": {
+            "description": "Turn off when scaling app horizontally",
+            "value": true,
+            "required": true
+        },
+        "auth-mailer-use": {
+            "description": "Which mailer use when sending forgot pass emails",
+            "value": "mailer-primary",
+            "required": true
+        },
+        "auth-mailer-subject": {
+            "description": "Forgot pass email subject",
+            "value": "Password changed",
+            "required": true
+        },
+        "auth-mailer-forgotpass": {
+            "description": "Forgot pass email template",
+            "value": "emails/forgotpass",
+            "required": true
+        },
+
+        "mailer-primary-from": {
+            "description": "Email from which will be messages come from",
+            "value": "your@email.com",
+            "required": true
+        },
+        "mailer-primary-name": {
+            "description": "Message sender name",
+            "value": "Some Name",
+            "required": true
+        },
+        "mailer-primary-host": {
+            "description": "Smtp server",
+            "value": "smtp.gmail.com",
+            "required": true
+        },
+        "mailer-primary-port": {
+            "description": "Smtp server port (465,587,25,...)",
+            "value": 465,
+            "required": true
+        },
+        "mailer-primary-secure": {
+            "description": "Smtp server SSL on/off",
+            "value": true,
+            "required": true
+        },
+        "mailer-primary-tls": {
+            "description": "Smtp server secure sending TLS on/off",
+            "value": [ "", "{ ciphers:'SSLv3' }" ]
+        },
+        "mailer-primary-user": {
+            "description": "Username registered in smtp server (when smtp auth enabled)",
+            "value": "username"
+        },
+        "mailer-primary-password": {
+            "description": "Password for user registered in smtp server (when smtp auth enabled)",
+            "value": "password"
+        }
+    }
+}

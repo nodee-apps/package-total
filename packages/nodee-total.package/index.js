@@ -17,7 +17,7 @@ var rest = require('./rest.js'),
 // important
 module.exports.id = 'nodee-total';
 module.exports.name = 'nodee-total';
-module.exports.version = '0.6.0';
+// module.exports.version = '0.6.0'; - version is moved to nodee-total.package.json
 module.exports.rest = rest;
 module.exports.Auth = Auth;
 
