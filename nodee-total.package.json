@@ -1,6 +1,7 @@
 {
     "name":"nodee-total",
     "version":"1.0.0",
+    "dependencies":[],
     "config":{
         "name": {
             "description": "IP, on which app will be listening (0.0.0.0 means any IP)",
@@ -28,6 +29,14 @@
             "description": "Primary datasource config is used as default datasource config, usually it is mongodb on port 27017",
             "value": 27017,
             "required":true
+        },
+        "datasource-primary-username":{
+            "description": "Database user name (leave blank if there is no db auth)",
+            "value": ""
+        },
+        "datasource-primary-password":{
+            "description": "Database user password",
+            "value": ""
         },
         "datasource-primary-database":{
             "description": "Leave blank to use application name as database name",
@@ -72,6 +81,14 @@
         "auth-datasource-filePath": {
             "description": "If using JsonFileDataSource, this will be required",
             "value": [ "", "./databases/users.json" ]
+        },
+        "auth-datasource-username": {
+            "description": "If using MongoDataSource, leave blank to use primary datasource database",
+            "value": ""
+        },
+        "auth-datasource-password": {
+            "description": "If using MongoDataSource, leave blank to use primary datasource database",
+            "value": ""
         },
         "auth-datasource-database": {
             "description": "If using MongoDataSource, leave blank to use primary datasource database",

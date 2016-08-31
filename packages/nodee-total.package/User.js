@@ -50,6 +50,8 @@ for(var cfgKey in framework.config){
 // mongo default settings
 connection.host = connection.host || framework.config['datasource-primary-host'];
 connection.port = connection.port || framework.config['datasource-primary-port'];
+connection.username = connection.username || framework.config['datasource-primary-username'];
+connection.password = connection.password || framework.config['datasource-primary-password'];
 connection.database = connection.database || framework.config['datasource-primary-database'] || framework.config.name;
 connection.collection = connection.collection || 'users';
 
