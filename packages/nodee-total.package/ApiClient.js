@@ -11,7 +11,6 @@ var ApiClient = Model.define('ApiClient', ['RestDataSource'], {
 ApiClient.extendDefaults({
     connection:{
         // baseUrl:'yourapi.com/products',
-        // basePath:'/products',
         // apiKey:'132asdas12234',
 
         // parsing
