@@ -4,7 +4,7 @@
     "dependencies":[],
     "config":{
         "name": {
-            "description": "IP, on which app will be listening (0.0.0.0 means any IP)",
+            "description": "Application name",
             "value": "",
             "required": true
         },
