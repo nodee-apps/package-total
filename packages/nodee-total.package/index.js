@@ -2,11 +2,11 @@
 
 var fs = require('fs'),
     model = require('nodee-model'),
-    framework = GLOBAL.framework,
-    Mail = GLOBAL.Mail;
+    framework = global.framework,
+    Mail = global.Mail;
 
-GLOBAL.eViewEngine = require('nodee-view');
-GLOBAL.eUtils = require('nodee-utils');
+global.eViewEngine = require('nodee-view');
+global.eUtils = require('nodee-utils');
 
 var rest = require('./rest.js'),
     User = require('./User.js'),
