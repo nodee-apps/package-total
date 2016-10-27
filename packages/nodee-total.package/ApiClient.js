@@ -13,6 +13,8 @@ ApiClient.extendDefaults({
         // baseUrl:'yourapi.com/products',
         // apiKey:'132asdas12234',
 
+        redirects:0,
+        
         // parsing
         dataKey:'data', // data key, if data is property of response object, e.g. { data:..., status:...}
         resourceListKey:'this', // list of resources - if there is no wrapper in response object, so data is resource, resourceKey:'this'
@@ -26,9 +28,10 @@ ApiClient.extendDefaults({
         all:{ method:'GET', url:'/', },
         create:{ method:'POST', url:'/{id}', },
         update:{ method:'PUT', url:'/{id}', },
-        remove:{ method:'DELETE', url:'/{id}', }
+        remove:{ method:'DELETE', url:'/{id}', returnsResource:false, sendBody:false }
     },
     options:{
+        limit: 50,
         hasCount: true, // if responses contains count
         autoPaging: true, // will auto request next page if query.limit not reached
         dynamicPageSize: false,
@@ -48,12 +51,12 @@ ApiClient.addMethod('buildQuery', function(defaults, reqData){
     if(defaults.options.page) $q.$page = defaults.options.page;
     
     // ensure it will work even if optimistic lock is on
-    if(defaults.connection.command === 'remove') $q.modifiedDT = reqData.modifiedDT;
+    if(defaults.connection.command === 'remove' && reqData.modifiedDT) $q.modifiedDT = reqData.modifiedDT;
     
     return { apikey: defaults.connection.apiKey, $q: JSON.stringify($q) };
 });
 
-ApiClient.addMethod('buildHeaders', function(defaults, reqData){
-    if(this.buildMethod(defaults, reqData) === 'GET') delete defaults.connection.headers['Content-Type'];
-    return defaults.connection.headers;
-});
+//ApiClient.addMethod('buildHeaders', function(defaults, reqData){
+//    if(this.buildMethod(defaults, reqData) === 'GET') delete defaults.connection.headers['Content-Type'];
+//    return defaults.connection.headers;
+//});
