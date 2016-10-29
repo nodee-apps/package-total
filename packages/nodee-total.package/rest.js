@@ -166,15 +166,26 @@ module.exports.install = function(){
     };
     // defaultCallback, configured as total.js controller, but can be overvriten by custom function
     framework.rest.defaultCallback = function(err, statusCode, resData, cb){
+        var ctrl = this;
+        
+        if(cb) return cb.call(this, statusCode, resData, function(){ // fail or success cb
+            if(err) {
+                ctrl.status = 500;
+                ctrl.view500(err);
+            }
+            else {
+                ctrl.status = statusCode;
+                ctrl.json(resData);
+            }
+        });
+        
         if(err) {
             this.status = 500;
             this.view500(err);
-            if(cb) cb.call(this, statusCode, resData); // fail cb
         }
         else {
             this.status = statusCode;
             this.json(resData);
-            if(cb) cb.call(this, statusCode, resData); // success cb
         }
     };
     framework.rest.instanceAction = function(modelName, opts, cb){
