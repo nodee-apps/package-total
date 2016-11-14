@@ -438,7 +438,7 @@ function collectionAction(ctx, opts, cb){ // cb(err, status, data)
             if(ctrl.params.id || query.id) cq = cq.findId( ctrl.params.id || query.id );
             cq.one(function(err, doc){
                 if(err) errResponse.call(ctrl, err, cb, ctx.fail);
-                else if(!doc) cb.call(ctrl, null, 404, { data: null }, ctx.success);
+                else if(!doc) cb.call(ctrl, null, 404, { data: null }, ctx.fail);
                 else cb.call(ctrl, null, 200, { data: includeHiddenFields(ctx.includeHiddenFields, doc) }, ctx.success);
             });
         }
@@ -558,7 +558,7 @@ function instanceAction(ctx, opts, cb){ // cb(err, status, data)
     if(!ctx.skipValidation){
         doc.validate();
         if(!doc.isValid()){
-            return cb.call(ctrl, null, 400, { data: doc.validErrs() }, ctx.success);
+            return cb.call(ctrl, null, 400, { data: doc.validErrs() }, ctx.fail);
         }
     }
     
@@ -601,7 +601,7 @@ function instanceAction(ctx, opts, cb){ // cb(err, status, data)
             // else find instance by Id and run method
             else ModelCnst.collection().find( object.extend(true, { id:resourceId }, accessQuery||{}) ).one(function(err, doc){
                 if(err) errResponse.call(ctrl, err, cb, ctx.fail);
-                else if(!doc) return cb.call(ctrl, null, 404, { data: null }, ctx.success);
+                else if(!doc) return cb.call(ctrl, null, 404, { data: null }, ctx.fail);
 
                 ctx.model = ctx.doc = ctx.document = doc;
                 ctx.onInstance.call(ctrl, ctx, function(){
