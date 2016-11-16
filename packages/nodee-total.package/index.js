@@ -283,18 +283,24 @@ function definition(){
     var origFwView = Framework.prototype.view;
     
     Controller.prototype.view = function(){
-        if((arguments[0]||'').substring(0,3)!=='ne:' && (arguments[0]||'').substring(0,6)!=='nodee:') origCtrlView.apply(this, arguments);
+        var args = Array.prototype.slice.call(arguments);
+        if((args[0]||'').substring(0,3)!=='ne:' && (args[0]||'').substring(0,6)!=='nodee:') {
+            return origCtrlView.apply(this, args);
+        }
         else {
-            arguments[0] = arguments[0].replace(/^ne:[\s]*/g,'').replace(/^nodee:[\s]*/g,'');
-            return view.apply(this, arguments);
+            args[0] = args[0].replace(/^ne:[\s]*/g,'').replace(/^nodee:[\s]*/g,'');
+            return view.apply(this, args);
         }
     };
     
     Framework.prototype.view = function(){
-        if((arguments[0]||'').substring(0,3)!=='ne:' && (arguments[0]||'').substring(0,6)!=='nodee:') origFwView.apply(this, arguments);
+        var args = Array.prototype.slice.call(arguments);
+        if((args[0]||'').substring(0,3)!=='ne:' && (args[0]||'').substring(0,6)!=='nodee:') {
+            return origFwView.apply(this, args);
+        }
         else {
-            arguments[0] = arguments[0].replace(/^ne:[\s]*/g,'').replace(/^nodee:[\s]*/g,'');
-            return view.apply(this, arguments);
+            args[0] = args[0].replace(/^ne:[\s]*/g,'').replace(/^nodee:[\s]*/g,'');
+            return view.apply(this, args);
         }
     };
     
