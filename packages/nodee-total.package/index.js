@@ -5,8 +5,8 @@ var fs = require('fs'),
     framework = global.framework,
     Mail = global.Mail;
 
-global.eViewEngine = require('nodee-view');
-global.eUtils = require('nodee-utils');
+global.neViewEngine = require('nodee-view');
+global.neUtils = require('nodee-utils');
 
 var rest = require('./rest.js'),
     User = require('./User.js'),
@@ -77,13 +77,13 @@ framework.on('ready', function(){
 
 module.exports.install = function(){
     // remember views directory ID
-    eViewEngine.viewDirId = framework.config['directory-views'].replace(/^\//, '').replace(/\/$/, ''); // /myapp/views/ --> myapp/views
-    var viewsDir = process.cwd() + '/' + eViewEngine.viewDirId;
+    neViewEngine.viewDirId = framework.config['directory-views'].replace(/^\//, '').replace(/\/$/, ''); // /myapp/views/ --> myapp/views
+    var viewsDir = process.cwd() + '/' + neViewEngine.viewDirId;
     
     // remember temp directory ID
-    eViewEngine.tempDirId = framework.config['directory-temp'].replace(/^\//, '').replace(/\/$/, ''); // /myapp/tmp/ --> myapp/tmp
+    neViewEngine.tempDirId = framework.config['directory-temp'].replace(/^\//, '').replace(/\/$/, ''); // /myapp/tmp/ --> myapp/tmp
     
-    eViewEngine.init(viewsDir, function(err){
+    neViewEngine.init(viewsDir, function(err){
         if(err) throw err;
     });
     
@@ -127,10 +127,10 @@ module.exports.install = function(){
 };
 
 function body2object(req, res, next, options, ctrl) {
-    if(ctrl && eUtils.object.isObject(ctrl.body)) {
+    if(ctrl && neUtils.object.isObject(ctrl.body)) {
         
         for(var prop in ctrl.body){
-            eUtils.object.setValue(ctrl.body, prop, ctrl.body[prop]);
+            neUtils.object.setValue(ctrl.body, prop, ctrl.body[prop]);
             if(prop.split('.').length > 1) delete ctrl.body[prop];
         }
     }
@@ -154,6 +154,14 @@ function definition(){
     // disable throwing error on Mail.emit('error', cb) with empty listener,
     // sendMail function will callback or throw error
     Mail.on('error', function(err){ });
+
+    // additional render second layer template - useful when rendering emails
+    function renderSecondLayerTemplate(str, model){
+        var model2 = model.$model2 || model._model2;
+        var model2 = model2 === true ? model : model2;
+        if(model2 && str) return neUtils.template.render(str, model2);
+        else return str;
+    }
     
     // address, subject, view, model, callback
     Controller.prototype.sendMail = Framework.prototype.sendMail = sendMail;
@@ -181,7 +189,7 @@ function definition(){
         opts.template = view || opts.view || opts.template || '';
         opts.model = model || opts.model || opts.viewModel || {};
         opts.attachments = opts.attachment ? [opts.attachment] : (opts.attachments || []);
-        
+
         //opts = {
         //    from:'asda@sd',
         //    name:'asda',
@@ -221,40 +229,38 @@ function definition(){
         if(typeof emailBody === 'function') emailBody = emailBody();
         var emailTemplate = typeof opts.template === 'function' ? opts.template() : opts.template;
         if(emailTemplate && emailTemplate.indexOf('ne:')!==0 && emailTemplate.indexOf('nodee:')!==0) emailTemplate = 'ne:'+emailTemplate;
-        
-        if(emailBody){
-            var model = (opts.config || {}).model || opts.model;
-            if(model.$brackets || model.$bracketsData || model.$bracketsModel){
-                emailBody = eUtils.template.render(emailBody, model.$brackets || model.$bracketsData || model.$bracketsModel);
-            }
-        }
-        else if(emailTemplate) {
-            emailBody = this.view(emailTemplate, opts.model, true);
-            if(emailBody instanceof Error) {
-                if(cb) cb(new Error('sendEmail: rendering view template failed').cause(emailBody));
-                else throw new Error('sendEmail: rendering view template failed').cause(emailBody);
-            }
-        }
-        
-        var emailSubject = typeof opts.subject === 'function' ? opts.subject() : opts.subject;
-        
+
         try {
+            if(emailBody){
+                var model = (opts.config || {}).model || opts.model;
+                emailBody = renderSecondLayerTemplate(emailBody, model);
+            }
+            else if(emailTemplate) {
+                emailBody = this.view(emailTemplate, opts.model, true);
+                if(emailBody instanceof Error) {
+                    if(cb) cb(new Error('sendEmail: rendering view template failed').cause(emailBody));
+                    else throw new Error('sendEmail: rendering view template failed').cause(emailBody);
+                }
+            }
+
+            var emailSubject = renderSecondLayerTemplate( typeof opts.subject === 'function' ? opts.subject() : opts.subject, model );
+
             var message = Mail.create(emailSubject, emailBody);
             
             // from
             message.from(mailerCfg.from, mailerCfg.name);
             
             // to
-            if(Array.isArray(opts.to)) for(var i=0;i<opts.to.length;i++) message.to(opts.to[i]);
-            else message.to(opts.to);
+            if(Array.isArray(opts.to)) for(var i=0;i<opts.to.length;i++) message.to(renderSecondLayerTemplate(opts.to[i],model));
+            else message.to(renderSecondLayerTemplate(opts.to, model));
             
             // cc
-            if(Array.isArray(opts.cc)) for(var i=0;i<opts.cc.length;i++) message.cc(opts.cc[i]);
-            else if(opts.cc) message.cc(opts.cc);
+            if(Array.isArray(opts.cc)) for(var i=0;i<opts.cc.length;i++) message.cc(renderSecondLayerTemplate(opts.cc[i],model));
+            else if(opts.cc) message.cc(renderSecondLayerTemplate(opts.cc, model));
             
             // bcc
-            if(Array.isArray(opts.bcc)) for(var i=0;i<opts.bcc.length;i++) message.bcc(opts.bcc[i]);
-            else if(opts.bcc) message.bcc(opts.bcc);
+            if(Array.isArray(opts.bcc)) for(var i=0;i<opts.bcc.length;i++) message.bcc(renderSecondLayerTemplate(opts.bcc[i],model));
+            else if(opts.bcc) message.bcc(renderSecondLayerTemplate(opts.bcc, model));
             
             // reply
             if(opts.reply || opts.replyTo) message.reply(opts.reply || opts.replyTo);
@@ -341,7 +347,7 @@ function definition(){
             // load view sync if this is view from package
             if(name[0] === '@') {
                 name = includePackageSuffix(name);
-                value = eViewEngine.renderSync(eViewEngine.tempDirId, name, model, mode, containers, function(viewName){
+                value = neViewEngine.renderSync(neViewEngine.tempDirId, name, model, mode, containers, function(viewName){
                     if(viewName[0]==='@') {
                         viewName = includePackageSuffix(viewName);
                         return viewName.substring(1);
@@ -349,7 +355,9 @@ function definition(){
                     else return viewName;
                 });
             }
-            else value = eViewEngine.render(eViewEngine.viewDirId, name, model, mode, containers);
+            else value = neViewEngine.render(neViewEngine.viewDirId, name, model, mode, containers);
+
+            value = renderSecondLayerTemplate(value, model);
         }
         catch(err){
             if(framework.isDebug || mode === 'admin'){
@@ -365,10 +373,6 @@ function definition(){
                 // self.view500(err);
                 return '';
             }
-        }
-        
-        if(model.$brackets || model.$bracketsData || model.$bracketsModel){
-            value = eUtils.template.render(value, model.$brackets || model.$bracketsData || model.$bracketsModel);
         }
         
         if(isPartial){ // isParitial indicates that view string will be used for something else than serving page, e.g. send Email, etc...
@@ -410,7 +414,7 @@ function definition(){
         delete model._viewMode;
         
         try {
-            value = eViewEngine.xml(model, xmlOpts);
+            value = neViewEngine.xml(model, xmlOpts);
         }
         catch(err){
             if(framework.isDebug || mode === 'admin'){
