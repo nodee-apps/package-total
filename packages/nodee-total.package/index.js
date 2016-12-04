@@ -156,10 +156,10 @@ function definition(){
     Mail.on('error', function(err){ });
 
     // additional render second layer template - useful when rendering emails
-    function renderSecondLayerTemplate(str, model){
+    function renderSecondLayerTemplate(str, model, locals, allwaysRender){
         var model2 = model.$model2 || model._model2;
         var model2 = model2 === true ? model : model2;
-        if(model2 && str) return neUtils.template.render(str, model2);
+        if((model2 || allwaysRender) && str) return neUtils.template.render(str, model2 || model || {}, locals);
         else return str;
     }
     
@@ -190,11 +190,14 @@ function definition(){
         opts.model = model || opts.model || opts.viewModel || {};
         opts.attachments = opts.attachment ? [opts.attachment] : (opts.attachments || []);
 
+        var locals = opts.locals || {};
+
         //opts = {
         //    from:'asda@sd',
         //    name:'asda',
         //    subject: 'asdad',
-        //    mailer: 'mailer-primary' 
+        //    locals:{ 'text to translate':'translated' },
+        //    mailer: 'mailer-primary',
         //    to: 'vas@email.sk',
         //    template: 'ne: emails/order_trip_updated',
         //    emailData: ... alias data
@@ -233,17 +236,17 @@ function definition(){
         try {
             if(emailBody){
                 var model = (opts.config || {}).model || opts.model;
-                emailBody = renderSecondLayerTemplate(emailBody, model);
+                emailBody = renderSecondLayerTemplate(emailBody, model, locals, true);
             }
             else if(emailTemplate) {
-                emailBody = this.view(emailTemplate, opts.model, true);
+                emailBody = this.view(emailTemplate, opts.model, locals, true);
                 if(emailBody instanceof Error) {
                     if(cb) cb(new Error('sendEmail: rendering view template failed').cause(emailBody));
                     else throw new Error('sendEmail: rendering view template failed').cause(emailBody);
                 }
             }
 
-            var emailSubject = renderSecondLayerTemplate( typeof opts.subject === 'function' ? opts.subject() : opts.subject, model );
+            var emailSubject = renderSecondLayerTemplate( typeof opts.subject === 'function' ? opts.subject() : opts.subject, model, locals, true );
 
             var message = Mail.create(emailSubject, emailBody);
             
@@ -251,16 +254,16 @@ function definition(){
             message.from(mailerCfg.from, mailerCfg.name);
             
             // to
-            if(Array.isArray(opts.to)) for(var i=0;i<opts.to.length;i++) message.to(renderSecondLayerTemplate(opts.to[i],model));
-            else message.to(renderSecondLayerTemplate(opts.to, model));
+            if(Array.isArray(opts.to)) for(var i=0;i<opts.to.length;i++) message.to(renderSecondLayerTemplate(opts.to[i],model,locals,true));
+            else message.to(renderSecondLayerTemplate(opts.to, model,locals,true));
             
             // cc
-            if(Array.isArray(opts.cc)) for(var i=0;i<opts.cc.length;i++) message.cc(renderSecondLayerTemplate(opts.cc[i],model));
-            else if(opts.cc) message.cc(renderSecondLayerTemplate(opts.cc, model));
+            if(Array.isArray(opts.cc)) for(var i=0;i<opts.cc.length;i++) message.cc(renderSecondLayerTemplate(opts.cc[i],model,locals,true));
+            else if(opts.cc) message.cc(renderSecondLayerTemplate(opts.cc, model,locals,true));
             
             // bcc
-            if(Array.isArray(opts.bcc)) for(var i=0;i<opts.bcc.length;i++) message.bcc(renderSecondLayerTemplate(opts.bcc[i],model));
-            else if(opts.bcc) message.bcc(renderSecondLayerTemplate(opts.bcc, model));
+            if(Array.isArray(opts.bcc)) for(var i=0;i<opts.bcc.length;i++) message.bcc(renderSecondLayerTemplate(opts.bcc[i],model,locals,true));
+            else if(opts.bcc) message.bcc(renderSecondLayerTemplate(opts.bcc, model,locals,true));
             
             // reply
             if(opts.reply || opts.replyTo) message.reply(opts.reply || opts.replyTo);
@@ -320,26 +323,35 @@ function definition(){
     Response view
     @name {String}
     @model {Object} :: optional
+    @locals {Object} :: optional
     @headers {Object} :: optional
     @isPartial {Boolean} :: optional
     @containers {Object} :: optional
     return {Controller or String}; string is returned when isPartial == true
     */
-    function view(name, model, headers, isPartial, containers) {
+    function view(name, model, locals, headers, isPartial, containers) {
         model = model || {};
         containers = containers || {};
         
         var self = this,
             value = '',
             mode = model.$viewMode || model._viewMode || '';
-        if(arguments.length === 3 && typeof headers === 'boolean'){
+
+        if(arguments.length === 3 && typeof arguments[2] === 'boolean'){
             isPartial = arguments[2];
             headers = null;
+            locals = null;
         }
-        if(arguments.length === 4 && typeof headers === 'boolean'){
+        else if(arguments.length === 4 && typeof arguments[2] === 'boolean'){
             containers = arguments[3];
             isPartial = arguments[2];
             headers = null;
+            locals = null;
+        }
+        else if(typeof arguments[3] === 'boolean'){
+            containers = arguments[4];
+            isPartial = arguments[3];
+            headers = arguments[2];
         }
         model.$user = model._user = self.user;
         
@@ -347,7 +359,7 @@ function definition(){
             // load view sync if this is view from package
             if(name[0] === '@') {
                 name = includePackageSuffix(name);
-                value = neViewEngine.renderSync(neViewEngine.tempDirId, name, model, mode, containers, function(viewName){
+                value = neViewEngine.renderSync(neViewEngine.tempDirId, name, model, locals, mode, containers, function(viewName){
                     if(viewName[0]==='@') {
                         viewName = includePackageSuffix(viewName);
                         return viewName.substring(1);
@@ -355,9 +367,9 @@ function definition(){
                     else return viewName;
                 });
             }
-            else value = neViewEngine.render(neViewEngine.viewDirId, name, model, mode, containers);
+            else value = neViewEngine.render(neViewEngine.viewDirId, name, model, locals, mode, containers);
 
-            value = renderSecondLayerTemplate(value, model);
+            value = renderSecondLayerTemplate(value, model, locals);
         }
         catch(err){
             if(framework.isDebug || mode === 'admin'){
