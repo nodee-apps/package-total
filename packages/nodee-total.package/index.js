@@ -289,6 +289,7 @@ function definition(){
     
     // store reference to original view function
     var origCtrlView = Controller.prototype.view;
+    var origCtrlView500 = Controller.prototype.view500;
     var origFwView = Framework.prototype.view;
     
     Controller.prototype.view = function(){
@@ -300,6 +301,10 @@ function definition(){
             args[0] = args[0].replace(/^ne:[\s]*/g,'').replace(/^nodee:[\s]*/g,'');
             return view.apply(this, args);
         }
+    };
+
+    Controller.prototype.view500 = function(error){
+        return controller_error_status(this, 500, error);
     };
     
     Framework.prototype.view = function(){
@@ -464,15 +469,18 @@ function definition(){
     });
 };
 
-//setTimeout(function() {
-//    framework.eval(definition);
-//    
-//    /*
-//     * User Transmit API
-//     */
-//    require('./UserTransmitAPI.js');
-//    
-//    setTimeout(function(){
-//        MODULE('nodee-total');
-//    },10);
-//}, 0);
+const controller_error_status = function(controller, status, problem) {
+        if (status !== 500 && problem)
+            controller.problem(problem);
+
+        if (controller.res.success || controller.res.headersSent || !controller.isConnected)
+            return controller;
+
+        controller.precache && controller.precache(null, null, null);
+        controller.req.path = [];
+        controller.subscribe.success();
+        controller.subscribe.route = framework.lookup(controller.req, '#' + status, [], 0);
+        controller.subscribe.exception = problem;
+    controller.subscribe.execute(status, true);
+    return controller;
+};

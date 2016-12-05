@@ -19,6 +19,7 @@ var options = {};
 
 // init total.js
 require("total.js");
+return debug();
 
 /*
  * DEBUG setup:
