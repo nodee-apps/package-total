@@ -352,6 +352,7 @@ function definition(){
             containers = arguments[4];
             isPartial = arguments[3];
             headers = arguments[2];
+            locals = null;
         }
         model.$user = model._user = self.user;
         
