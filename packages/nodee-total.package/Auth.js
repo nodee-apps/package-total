@@ -229,8 +229,10 @@ function Auth(opts, initCb){
         var sessCookie = req.cookie(framework.config['session-cookie-name']);
         var user = framework.decrypt(sessCookie, 'user');
         
-        // authKey as query parameter
-        var apiKey = (req.query || {}).apikey;
+        // authKey as header value, or query parameter
+        var apiKey = (req.headers || {})[ framework.config['auth-key-name'] || 'apikey' ];
+        apiKey = apiKey || (req.query || {})[ framework.config['auth-key-name'] || 'apiKey' ];
+
         if(apiKey) user = { apiKey:apiKey, ip:req.ip };
         
         var transmitKey = framework.config['transmit-key'] || framework.config['transmit-api-key'];
