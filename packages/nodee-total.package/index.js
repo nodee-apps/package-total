@@ -97,7 +97,7 @@ module.exports.install = function(){
         
         // Documentation: http://docs.totaljs.com/Framework/#framework.onCompileJS
         framework.onCompileScript = function(filename, content) {
-            if(!framework.isDebug) {
+            if(!framework.isDebug && framework.config['minify-scripts'] !== false) {
                 try {
                     return uglify.minify(content, { fromString: true }).code;
                 }
