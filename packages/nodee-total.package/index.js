@@ -91,22 +91,27 @@ module.exports.install = function(){
     
     // middleware for parsing nested object from posted req body
     framework.middleware('body2object',body2object);
+
+    function minifyError(err){
+        return '// Uglify-JS minification error (line ' +err.line+ ', col ' +err.col+ '): ' + err.message.replace(/«/g,'"').replace(/»/g,'"') + ' \n\n' + content;
+    }
     
     try {
-        var uglify = require('uglify-js');
+        var uglify = require('uglify-js'); // using uglify-js v3
         
         // Documentation: http://docs.totaljs.com/Framework/#framework.onCompileJS
         framework.onCompileScript = function(filename, content) {
             if(!framework.isDebug && framework.config['minify-scripts'] !== false) {
                 try {
-                    return uglify.minify(content, { fromString: true }).code || '';
+                    var minResult = uglify.minify(content);
+                    if(minResult.error) return minifyError(err);
+                    else return minResult.code;
                 }
                 catch(err){
-                    return '// Uglify-JS minification error (line ' +err.line+ ', col ' +err.col+ '): ' + 
-                           err.message.replace(/«/g,'"').replace(/»/g,'"') + ' \n\n' + content;
+                    return minifyError(err);
                 }
             }
-            else return content || '';
+            else return content;
         };
     }
     catch(err){
