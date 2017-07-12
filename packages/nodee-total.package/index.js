@@ -383,7 +383,7 @@ function definition(){
                 for(var prop in err) if(err.hasOwnProperty(prop)) value += prop + ': ' + err[prop] + '\n';
                 
                 if(isPartial) return value;
-                framework.responseContent(self.req, self.res, 500, value, CONTENTTYPE_TEXTPLAIN, self.config['allow-gzip'], headers);
+                framework.responseContent(self.req, self.res, 500, value, 'text/html', self.config['allow-gzip'], headers);
                 return self;
             }
             else {
@@ -400,7 +400,7 @@ function definition(){
             // write log on begining, if defined
             if(model.$log) value = model.$log + value;
             
-            framework.responseContent(self.req, self.res, self.status, value, CONTENTTYPE_TEXTHTML, self.config['allow-gzip'], headers);
+            framework.responseContent(self.req, self.res, self.status, value, 'text/html', self.config['allow-gzip'], headers);
             framework.stats.response.view++;
         }
         
@@ -440,7 +440,7 @@ function definition(){
                 for(var prop in err) if(err.hasOwnProperty(prop)) value += prop + ': ' + err[prop] + '\n';
                 
                 if(isPartial) return value;
-                framework.responseContent(self.req, self.res, 500, value, CONTENTTYPE_TEXTPLAIN, self.config['allow-gzip'], headers);
+                framework.responseContent(self.req, self.res, 500, value, 'text/html', self.config['allow-gzip'], headers);
                 return self;
             }
             else {
@@ -470,17 +470,25 @@ function definition(){
 };
 
 const controller_error_status = function(controller, status, problem) {
-        if (status !== 500 && problem)
-            controller.problem(problem);
+    if (status !== 500 && problem) controller.problem(problem);
 
-        if (controller.res.success || controller.res.headersSent || !controller.isConnected)
-            return controller;
+    if (controller.res.success || controller.res.headersSent || !controller.isConnected) return controller;
 
+    if(controller.subscribe){
         controller.precache && controller.precache(null, null, null);
         controller.req.path = [];
         controller.subscribe.success();
         controller.subscribe.route = framework.lookup(controller.req, '#' + status, [], 0);
         controller.subscribe.exception = problem;
-    controller.subscribe.execute(status, true);
+        controller.subscribe.execute(status, true);
+    }
+    else {
+        controller.precache && controller.precache(null, null, null);
+        controller.req.path = [];
+        controller.req.$total_success();
+        controller.req.$total_route = F.lookup(controller.req, '#' + status, [], 0);
+        controller.req.$total_exception = problem;
+        controller.req.$total_execute(status, true);
+    }
     return controller;
 };

@@ -49,10 +49,10 @@ module.exports.install = function(){
     framework.on('controller', function(ctrl, name) {
         ctrl.params = {};
         // ctrl.uri.path = '/admin/cms/asdasd'
-        // ctrl.subscribe.route:
+        // ctrl.req.$total_route:
         //      url: [ 'admin', 'cms', 'documents', '{id}', 'move', '{parentId}' ],
         //      param: [ 3, 5 ]
-        var route = (ctrl.subscribe || {}).route;
+        var route = ctrl.subscribe ? (ctrl.subscribe || {}).route : ctrl.req.$total_route;
         var path = ctrl.uri.path.split('/');
         path[ path.length-1 ] = path[ path.length-1 ].replace(/\?.*$/,'');
         var routeUrl = route.name.replace(/^\//,'').split('/');

@@ -326,7 +326,7 @@ module.exports.install = function(){
     
     // register auth filter
     framework.on('controller', function(ctrl, name) {
-        var routeName = ctrl.subscribe.route.name + '/';
+        var routeName = (ctrl.subscribe ? ctrl.subscribe.route.name : ctrl.req.$total_route.name) + '/';
         var urlPath = ctrl.uri.pathname + '/';
         
         // exclude ready,health routes - they should allways work
