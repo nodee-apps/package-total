@@ -99,14 +99,14 @@ module.exports.install = function(){
         framework.onCompileScript = function(filename, content) {
             if(!framework.isDebug && framework.config['minify-scripts'] !== false) {
                 try {
-                    return uglify.minify(content, { fromString: true }).code;
+                    return uglify.minify(content, { fromString: true }).code || '';
                 }
                 catch(err){
                     return '// Uglify-JS minification error (line ' +err.line+ ', col ' +err.col+ '): ' + 
                            err.message.replace(/«/g,'"').replace(/»/g,'"') + ' \n\n' + content;
                 }
             }
-            else return content;
+            else return content || '';
         };
     }
     catch(err){
