@@ -185,7 +185,7 @@ function Auth(opts, initCb){
                             subject: authMailer.subject,
                             body: authMailer.body,
                             template: authMailer.template,
-                            model:{ $brackets: { new_password: new_password } }, //{ token: user.forgotPassToken },
+                            model:{ $model2: { new_password: new_password } }, //{ token: user.forgotPassToken },
                             to: user.email
                         }, function(err){
                             if(err) console.warn('Sending Forgot Pass. email to "' +user.email+ '" failed', err);
