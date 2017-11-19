@@ -145,10 +145,10 @@ function body2object(req, res, next, options, ctrl) {
 function definition(){
     
     // catch all errors to change healthy state
-    var onErrorOriginal = Framework.prototype.onError;
-    Framework.prototype.onError = function(err, name, uri) {
+    var onErrorOriginal = F.onError;
+    F.onError = function(err, name, uri) {
         var nodee_total = MODULE('nodee-total');
-        
+
         // if nodee-total module does not exists, app will not be ready and healthy
         if(nodee_total) nodee_total.setHealthy(name || uri || 'undefined', false);
         
