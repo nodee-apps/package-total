@@ -104,7 +104,7 @@ module.exports.install = function(){
             if(!framework.isDebug && framework.config['minify-scripts'] !== false) {
                 try {
                     var minResult = uglify.minify(content);
-                    if(minResult.error) return minifyError(err, content);
+                    if(minResult.error) return minifyError(minResult.error, content);
                     else return minResult.code;
                 }
                 catch(err){
