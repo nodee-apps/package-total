@@ -92,7 +92,7 @@ module.exports.install = function(){
     // middleware for parsing nested object from posted req body
     framework.middleware('body2object',body2object);
 
-    function minifyError(err){
+    function minifyError(err, content){
         return '// Uglify-JS minification error (line ' +err.line+ ', col ' +err.col+ '): ' + err.message.replace(/«/g,'"').replace(/»/g,'"') + ' \n\n' + content;
     }
     
@@ -104,11 +104,11 @@ module.exports.install = function(){
             if(!framework.isDebug && framework.config['minify-scripts'] !== false) {
                 try {
                     var minResult = uglify.minify(content);
-                    if(minResult.error) return minifyError(err);
+                    if(minResult.error) return minifyError(err, content);
                     else return minResult.code;
                 }
                 catch(err){
-                    return minifyError(err);
+                    return minifyError(err, content);
                 }
             }
             else return content;
