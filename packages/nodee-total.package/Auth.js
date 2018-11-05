@@ -33,8 +33,11 @@ function Auth(opts, initCb){
     auth.registerSuccess = opts.registerSuccess;
     auth.forgotPassSubject = opts.forgotPassSubject;
     auth.forgotPassEmail = opts.forgotPassEmail;
-    auth.forgotPassTemplate = opts.forgotPassTemplate;
-    
+    auth.forgotPassTemplate = opts.forgotPassTemplate; // forgot pass page template
+    auth.forgotPassEmailTemplate = opts.forgotPassEmailTemplate;
+    auth.forgotPassNoreset = opts.forgotPassNoreset;
+    auth.forgotPassUrl = opts.forgotPassUrl; // url where user can change password
+
     Model(auth.userModel).init(function(){
         if(initCb) initCb();
     });
@@ -110,19 +113,44 @@ function Auth(opts, initCb){
         else auth.viewLogin.call(self);
     };
 
+    auth.viewForgotPass = function(data){
+        this.view(auth.forgotPassTemplate, data);
+    };
+
     auth.changepass = function(){
         var self = this,
-            pass = self.body || {};
-        
-        if(self.user && pass.oldPass && pass.newPass){
-            if(pass.newPass.length < auth.minLength) {
+            change = self.body || {};
+
+        if(change.email && change.token && change.newPass){
+            Model(auth.userModel).collection().find({ email:change.email }).one(function(err, user){
+                if(err) self.view500(err);
+                else if(!user) {
+                    self.status = 400;
+                    self.json({ data:{ email:['invalid'] } });
+                }
+                else if(!user.forgotPassToken || user.forgotPassToken !== change.token){
+                    self.status = 400;
+                    self.json({ data:{ token:['invalid'] } });
+                }
+                else {
+                    user.hashPass(change.newPass+'');
+                    user.forgotPassToken = '';
+                    user.update(function(err, newUser){
+                        if(err) self.view500(err);
+                        else self.json({ data:'password changed'});
+                    });
+                }
+            });
+        }
+        else if(self.user && change.oldPass && change.newPass){
+            if(change.newchange.length < auth.minLength) {
                 self.status = 400;
                 self.json({ data:{ password:['minLength'] } });
             }
-            else Model(auth.userModel).validateLogin({ email: self.user.email, password: pass.oldPass }, function(err, user){
+            else Model(auth.userModel).validateLogin({ email: self.user.email, password: change.oldPass }, function(err, user){
                 if(err) self.view500(err);
                 else if(user){
-                    user.hashPass(pass.newPass);
+                    user.hashPass(change.newPass);
                     user.update(function(err, newUser){
                         if(err) self.view500(err);
                         else self.json({ data:'password changed'});
@@ -130,13 +158,13 @@ function Auth(opts, initCb){
                 }
                 else {
                     self.status = 400;
-                    self.json({ data:{ password:['invalid'] } });
+                    self.json({ data:{ user:['invalid'] } });
                 }
             });
         }
         else {
             self.status = 400;
-            self.json({ data:{ password:['invalid'] } });
+            self.json({ data:{ user:['invalid'] } });
         }
     };
 
@@ -155,7 +183,7 @@ function Auth(opts, initCb){
             timeout: authMailer.timeout || framework.config[ mailerCfgId+'timeout' ],
 
             body: auth.forgotPassEmail,
-            template: auth.forgotPassTemplate || framework.config[ 'auth-mailer-template' ] || framework.config[ mailerCfgId+'template' ],
+            template: auth.forgotPassEmailTemplate || framework.config[ 'auth-mailer-template' ] || framework.config[ mailerCfgId+'template' ],
             subject: auth.forgotPassSubject || framework.config[ 'auth-mailer-subject' ] || framework.config[ mailerCfgId+'subject' ]
         };
     }
@@ -174,9 +202,18 @@ function Auth(opts, initCb){
                         return self.json({ data:'Mailer Not Configured'});
                     }
 
-                    // user.forgotPassToken = guid();
-                    var new_password = generateId();
-                    user.hashPass(new_password);
+                    var newPassword, forgotPassToken;
+
+                    // don't reset password, just generate forgotPassToken
+                    if(auth.forgotPassNoreset || framework.config['auth-mailer-forgotpass-noreset'] === true) {
+                        forgotPassToken = generateId();
+                        user.forgotPassToken = forgotPassToken;
+                    }
+                    else {
+                        newPassword = generateId();
+                        user.hashPass(newPassword);
+                    }
+                    
                     user.update(function(err, newUser){
                         if(err) return self.view500(err);
 
@@ -185,7 +222,15 @@ function Auth(opts, initCb){
                             subject: authMailer.subject,
                             body: authMailer.body,
                             template: authMailer.template,
-                            model:{ $model2: { new_password: new_password } }, //{ token: user.forgotPassToken },
+                            model:{
+                                $model2: {
+                                    email:user.email,
+                                    forgotPassUrl: auth.forgotPassUrl,
+                                    newPassword: newPassword,
+                                    new_password: newPassword, // alias fallback for newPassword
+                                    token: forgotPassToken
+                                }
+                            },
                             to: user.email
                         }, function(err){
                             if(err) console.warn('Sending Forgot Pass. email to "' +user.email+ '" failed', err);
@@ -287,7 +332,8 @@ Auth.prototype.generateRoutes = function(){
     framework.route(auth.basePath + 'register', auth.register, ['post', 'json']);
     framework.route(auth.basePath + 'register', auth.register, ['post', '#body2object']);
     framework.route(auth.basePath + 'logout', auth.logout, ['authorize']);
-    framework.route(auth.basePath + 'changepass', auth.changepass, ['post','json','authorize']);
+    framework.route(auth.basePath + 'changepass', auth.changepass, ['post','json']);
+    framework.route(auth.basePath + 'forgotpass', auth.viewForgotPass, ['get']);
     framework.route(auth.basePath + 'forgotpass', auth.forgotpass, ['post','json']);
     
     // ensure correct handling of 404

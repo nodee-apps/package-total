@@ -19,6 +19,7 @@ var UserProfile = Model.define('UserProfile', {
 
 var User = Model.define( 'User', [ datasource ], {
     email:{ isEmail:true },
+    emailConfirmed:{ isBoolean:true },
     roles:{ isArray:true },
     password:{ isString:true, minLength:5, hidden:true },
     lastLoginDT:{ toDate:true },
@@ -142,7 +143,9 @@ User.prototype.clearCache = function(){
 
 User.prototype.hashPass = function(password){
     var user = this;
+    var oldPass = user.password;
     user.password = pass.hash(password || user.password);
+    if(oldPass && user.password && oldPass !== user.password) user.passwordChanged = true;
     return user;
 };
 
