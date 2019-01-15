@@ -143,7 +143,7 @@ function Auth(opts, initCb){
             });
         }
         else if(self.user && change.oldPass && change.newPass){
-            if(change.newchange.length < auth.minLength) {
+            if(change.newPass.length < auth.minLength) {
                 self.status = 400;
                 self.json({ data:{ password:['minLength'] } });
             }
